@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, AnimatePresence } from "motion/react";
 import { Menu, X, User } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -45,12 +46,26 @@ export default function Navbar() {
           {/* Logo */}
           <Link
             href="/"
-            className={cn(
-              "font-serif text-2xl font-bold tracking-[0.3em] transition-colors duration-500",
-              isActive ? "text-pandora-charcoal" : "text-white"
-            )}
+            className="flex items-center gap-3"
           >
-            PANDORA
+            <Image
+              src="/logo.jpg"
+              alt="PANDORA Logo"
+              width={40}
+              height={48}
+              className={cn(
+                "object-cover transition-all duration-500",
+                isActive ? "invert" : ""
+              )}
+            />
+            <span
+              className={cn(
+                "font-serif text-2xl font-bold tracking-[0.3em] transition-colors duration-500",
+                isActive ? "text-pandora-charcoal" : "text-white"
+              )}
+            >
+              PANDORA
+            </span>
           </Link>
 
           {/* Desktop Nav */}
