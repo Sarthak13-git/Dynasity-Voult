@@ -33,7 +33,7 @@ export default function AuctionItemPage({
         style={{ backgroundColor: "black" }}
       >
         <Image
-          src="/logo.jpg"
+          src="/pandora.png"
           alt="Pandora's Box Logo"
           width={100}
           height={120}

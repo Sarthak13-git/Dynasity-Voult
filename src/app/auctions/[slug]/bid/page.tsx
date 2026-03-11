@@ -186,7 +186,7 @@ export default function BiddingPage({
       {/* Header */}
       <header className="w-full flex items-center justify-center py-2" style={{ backgroundColor: "black" }}>
         <Image
-          src="/logo.jpg"
+          src="/pandora.png"
           alt="Pandora's Box Logo"
           width={100}
           height={120}

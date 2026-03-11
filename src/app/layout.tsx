@@ -42,6 +42,10 @@ export const metadata: Metadata = {
       "Discover rare, ancient, and historically significant artifacts. Premium auctions, exhibitions, and curated collections.",
     type: "website",
   },
+  icons: {
+    icon: "/pandora.png",
+    apple: "/pandora.png",
+  },
 };
 
 export default function RootLayout({

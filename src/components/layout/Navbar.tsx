@@ -49,13 +49,13 @@ export default function Navbar() {
             className="flex items-center gap-3"
           >
             <Image
-              src="/logo.jpg"
+              src="/pandora.png"
               alt="PANDORA Logo"
               width={40}
               height={48}
               className={cn(
-                "object-cover transition-all duration-500",
-                isActive ? "invert" : ""
+                "object-contain transition-all duration-500",
+                isActive ? "" : "brightness-0 invert"
               )}
             />
             <span
