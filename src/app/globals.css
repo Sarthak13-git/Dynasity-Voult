@@ -1,0 +1,192 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* ─── PANDORA Design System ─── */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-playfair);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  /* PANDORA custom tokens */
+  --color-pandora-gold: #B8860B;
+  --color-pandora-gold-light: #D4AF37;
+  --color-pandora-ivory: #FDFBF7;
+  --color-pandora-cream: #F5F0E8;
+  --color-pandora-charcoal: #1A1A1A;
+  --color-pandora-charcoal-light: #2D2D2D;
+  --color-pandora-gray: #6B6B6B;
+  --color-pandora-gray-light: #9A9A9A;
+  --color-pandora-warm-white: #FAF8F5;
+}
+
+:root {
+  --radius: 0.5rem;
+  --background: #FDFBF7;
+  --foreground: #1A1A1A;
+  --card: #FFFFFF;
+  --card-foreground: #1A1A1A;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1A1A;
+  --primary: #1A1A1A;
+  --primary-foreground: #FDFBF7;
+  --secondary: #F5F0E8;
+  --secondary-foreground: #1A1A1A;
+  --muted: #F5F0E8;
+  --muted-foreground: #6B6B6B;
+  --accent: #B8860B;
+  --accent-foreground: #FFFFFF;
+  --destructive: #DC2626;
+  --border: #E8E2D9;
+  --input: #E8E2D9;
+  --ring: #B8860B;
+}
+
+/* ─── Base Styles ─── */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  ::selection {
+    background-color: #B8860B;
+    color: #FFFFFF;
+  }
+
+  ::-moz-selection {
+    background-color: #B8860B;
+    color: #FFFFFF;
+  }
+
+  /* Premium scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #D4AF37;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #B8860B;
+  }
+}
+
+/* ─── PANDORA Utility Classes ─── */
+
+@layer utilities {
+  .font-serif {
+    font-family: var(--font-playfair), Georgia, "Times New Roman", serif;
+  }
+
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #B8860B 0%, #D4AF37 50%, #B8860B 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Editorial image treatment */
+  .editorial-image {
+    object-fit: cover;
+    object-position: center;
+    will-change: transform;
+  }
+
+  /* Elegant divider line */
+  .divider-gold {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      #D4AF37 20%,
+      #B8860B 50%,
+      #D4AF37 80%,
+      transparent 100%
+    );
+  }
+
+  /* Glass effect for navbar */
+  .glass-nav {
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  /* Hover reveal effect */
+  .hover-reveal {
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .group:hover .hover-reveal {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Premium button glow */
+  .btn-glow {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-glow::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    background: linear-gradient(135deg, #B8860B, #D4AF37, #B8860B);
+    z-index: -1;
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+
+  .btn-glow:hover::after {
+    opacity: 0.15;
+  }
+}

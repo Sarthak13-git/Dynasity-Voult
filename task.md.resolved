@@ -1,0 +1,32 @@
+# PANDORA — Task Breakdown
+
+## Phase 1: Foundation & Core Architecture
+
+- [/] Plan project architecture and create implementation plan
+- [ ] Set up design system (fonts, colors, theme tokens for PANDORA brand)
+- [ ] Create Supabase client utilities (browser + server)
+- [ ] Define TypeScript types for core domain models
+- [ ] Build database schema (Supabase SQL migrations)
+- [ ] Implement root layout with Lenis smooth scroll + dark theme
+- [ ] Build shared UI components (Navbar, Footer, Hero sections)
+- [ ] Create landing page (homepage)
+- [ ] Set up authentication (email + Google via Supabase Auth)
+- [ ] Verify Phase 1 with dev server
+
+## Phase 2: Artifact Catalog & Detail Pages (future)
+
+- [ ] Artifact listing page with filters and search
+- [ ] Individual artifact detail page with provenance timeline
+- [ ] Admin artifact CRUD (create/edit/delete)
+
+## Phase 3: Auction Engine (future)
+
+- [ ] Auction room page with real-time bidding (Supabase Realtime)
+- [ ] Auction scheduling and management
+- [ ] Bid history and notifications
+
+## Phase 4: Exhibitions, Venue Booking, and Premium Features (future)
+
+- [ ] Exhibition showcase pages
+- [ ] Venue/room booking system
+- [ ] User dashboard and profile
