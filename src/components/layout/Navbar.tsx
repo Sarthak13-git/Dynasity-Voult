@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Menu, X, User } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const pathname = usePathname();
 
   const handleScroll = useCallback(() => {
     setIsScrolled(window.scrollY > 80);
@@ -28,7 +30,12 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [handleScroll]);
 
-  const isActive = isScrolled || isHovered || isMobileOpen;
+  if (pathname?.endsWith("/bid")) {
+    return null;
+  }
+
+  const isAuctionsPage = pathname === "/auctions";
+  const isActive = isScrolled || isHovered || isMobileOpen || isAuctionsPage;
 
   return (
     <>
