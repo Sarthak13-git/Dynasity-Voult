@@ -5,6 +5,7 @@ import Image from "next/image";
 import { notFound, useRouter } from "next/navigation";
 import { use } from "react";
 import { auctionItems } from "@/lib/auction-data";
+import { Clock, Trophy, ArrowLeft, History } from "lucide-react";
 
 const botNames = ["Kurt Hansen", "Albert Wesker", "Joseph Stalin"];
 const botMaxBid = 40000;
@@ -134,40 +135,34 @@ export default function BiddingPage({
   // Winner screen
   if (auctionEnded && winner) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "black", color: "white" }}
-      >
-        <div
-          className="text-center p-8 rounded-2xl max-w-lg w-[90%]"
-          style={{
-            background:
-              "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(45,44,51,1) 100%)",
-          }}
-        >
-          <h1 className="text-4xl font-bold mb-4">Auction Winner!</h1>
-          <p className="text-xl mb-2">Congratulations to:</p>
-          <p className="text-2xl font-bold" style={{ color: "#63dff0" }}>
-            {winner.user}
+      <div className="min-h-screen bg-pandora-charcoal flex items-center justify-center text-white px-6">
+        <div className="relative text-center p-12 max-w-lg w-full border border-pandora-gold/30 bg-pandora-charcoal-light/30 backdrop-blur-sm flex flex-col items-center">
+          <Trophy size={48} className="text-pandora-gold-light mb-6" strokeWidth={1} />
+          <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-pandora-gold-light mb-4">
+            Auction Concluded
           </p>
-          <p className="text-xl mt-4">
-            Winning Bid:{" "}
-            <span style={{ color: "#63dff0", fontWeight: "bold" }}>
-              ${winner.amount}K
-            </span>
-          </p>
-          <p className="mt-2">Time of Winning Bid: {winner.time}</p>
+          <h1 className="font-serif text-4xl md:text-5xl font-medium mb-8">
+            The Winner Is
+          </h1>
+          
+          <div className="w-full border-t border-b border-white/10 py-6 mb-8">
+            <p className="font-serif text-3xl font-medium text-white mb-2">
+              {winner.user}
+            </p>
+            <p className="text-[13px] uppercase tracking-[0.2em] text-white/60 mb-4">
+              Winning Bid
+            </p>
+            <p className="font-serif text-4xl font-medium text-pandora-gold-light">
+              ${winner.amount.toLocaleString()}
+            </p>
+          </div>
+          
           <button
             onClick={() => router.push("/auctions")}
-            className="mt-6 px-6 py-3 rounded-lg cursor-pointer text-white border-none"
-            style={{
-              background:
-                "linear-gradient(to right, #2C5364, #203A43, #0F2027)",
-              fontFamily: "'Segoe UI'",
-              fontSize: "1rem",
-            }}
+            className="group inline-flex items-center gap-3 border border-pandora-gold px-8 py-4 text-[12px] font-semibold uppercase tracking-[0.15em] text-pandora-gold transition-all hover:bg-pandora-gold hover:text-white"
           >
-            Return
+            <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-1" />
+            Return to Auctions
           </button>
         </div>
       </div>
@@ -175,168 +170,156 @@ export default function BiddingPage({
   }
 
   return (
-    <div
-      className="min-h-screen"
-      style={{
-        backgroundColor: "black",
-        color: "white",
-        fontFamily: "'Segoe UI', sans-serif",
-      }}
-    >
+    <div className="min-h-screen bg-pandora-charcoal text-white selection:bg-pandora-gold selection:text-white pb-24">
       {/* Header */}
-      <header className="w-full flex items-center justify-center py-2" style={{ backgroundColor: "black" }}>
-        <Image
-          src="/pandora.png"
-          alt="Pandora's Box Logo"
-          width={100}
-          height={120}
-          className="object-cover"
-        />
+      <header className="w-full flex items-center justify-between px-6 py-8 border-b border-white/10">
+        <button
+          onClick={() => router.back()}
+          className="group flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60 hover:text-pandora-gold transition-colors"
+        >
+          <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-1" />
+          Back
+        </button>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-pandora-gold-light">
+          Live Auction
+        </p>
+        <div className="w-20" /> {/* Spacer for centering */}
       </header>
 
-      <main
-        className="mx-auto mt-10 p-4 rounded-lg"
-        style={{
-          maxWidth: "800px",
-          background:
-            "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(45,44,51,1) 100%)",
-        }}
-      >
-        {/* Bidding Status */}
-        <section
-          className="mb-8 p-4 rounded-lg"
-          style={{
-            background:
-              "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(45,44,51,1) 100%)",
-            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-          }}
-        >
-          <h2 className="text-2xl font-bold mb-4">Current Bidding Status</h2>
-          <p>
-            <strong>Current Highest Bid:</strong> ${currentHighestBid}
+      <main className="mx-auto max-w-[1200px] px-6 lg:px-12 mt-16">
+        {/* Item Header */}
+        <div className="text-center mb-16">
+          <h1 className="font-serif text-4xl md:text-6xl font-medium text-white mb-4">
+            {item.title}
+          </h1>
+          <p className="text-[13px] uppercase tracking-[0.2em] text-white/50">
+            Premium Archive
           </p>
-          <p>
-            <strong>Total Bids:</strong> {bidCount}
-          </p>
-          <p>
-            <strong>Auction Ends In:</strong>{" "}
-            {String(minutes).padStart(2, "0")}:
-            {String(seconds).padStart(2, "0")}
-          </p>
-        </section>
+        </div>
 
-        {/* Place Bid */}
-        <section
-          className="mb-8 p-4 rounded-lg"
-          style={{
-            background:
-              "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(45,44,51,1) 100%)",
-            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-          }}
-        >
-          <h2 className="text-2xl font-bold mb-4">Place Your Bid</h2>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            <label htmlFor="bid-amount">Enter your bid amount:</label>
-            <input
-              type="number"
-              id="bid-amount"
-              value={bidAmount}
-              onChange={(e) => setBidAmount(e.target.value)}
-              placeholder="Enter bid in USD"
-              required
-              className="px-3 py-2 rounded text-black"
-              style={{ backgroundColor: "white" }}
-            />
-            <button
-              type="submit"
-              className="px-4 py-2 rounded text-white border-none cursor-pointer"
-              style={{ backgroundColor: "#007bff" }}
-              onMouseOver={(e) =>
-                (e.currentTarget.style.backgroundColor = "#0056b3")
-              }
-              onMouseOut={(e) =>
-                (e.currentTarget.style.backgroundColor = "#007bff")
-              }
-            >
-              Place Bid
-            </button>
-          </form>
-          {feedback && (
-            <p className="mt-2 text-red-400">{feedback}</p>
-          )}
-        </section>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+          {/* Left Column: Bidding Form & Status */}
+          <div className="lg:col-span-7 space-y-12">
+            
+            {/* Status Panel */}
+            <div className="border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
+              <div className="flex items-center gap-3 mb-8">
+                <Clock size={18} className="text-pandora-gold-light" />
+                <h2 className="text-[11px] font-semibold uppercase tracking-[0.3em] text-pandora-gold-light">
+                  Bidding Status
+                </h2>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-8">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-white/40 mb-2">
+                    Current Highest Bid
+                  </p>
+                  <p className="font-serif text-4xl font-medium text-pandora-gold-light">
+                    ${currentHighestBid.toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-white/40 mb-2">
+                    Time Remaining
+                  </p>
+                  <p className="font-serif text-4xl font-medium text-white flex items-baseline gap-2">
+                    {String(minutes).padStart(2, "0")}<span className="text-xl text-white/50">:</span>{String(seconds).padStart(2, "0")}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-white/40 mb-2">
+                    Total Bids
+                  </p>
+                  <p className="font-serif text-2xl font-medium text-white">
+                    {bidCount}
+                  </p>
+                </div>
+              </div>
+            </div>
 
-        {/* Bid History */}
-        <section
-          className="mb-8 p-4 rounded-lg"
-          style={{
-            background:
-              "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(45,44,51,1) 100%)",
-            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-          }}
-        >
-          <h2 className="text-2xl font-bold mb-4">Bid History</h2>
-          <table className="w-full" style={{ borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th
-                  className="p-2 text-center"
-                  style={{ border: "1px solid #ddd" }}
+            {/* Place Bid Panel */}
+            <div className="border border-pandora-gold/20 bg-pandora-gold/5 p-8 backdrop-blur-sm">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.3em] text-pandora-gold-light mb-8">
+                Place Your Bid
+              </h2>
+              <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                <div>
+                  <label htmlFor="bid-amount" className="block text-[11px] uppercase tracking-[0.2em] text-white/60 mb-3">
+                    Enter bid amount (In K USD)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 font-serif text-xl">$</span>
+                    <input
+                      type="number"
+                      id="bid-amount"
+                      value={bidAmount}
+                      onChange={(e) => setBidAmount(e.target.value)}
+                      placeholder={`${currentHighestBid + minIncrement}`}
+                      required
+                      className="w-full bg-transparent border-b border-white/20 px-10 py-4 text-2xl font-serif text-white focus:outline-none focus:border-pandora-gold-light transition-colors placeholder:text-white/20"
+                    />
+                  </div>
+                </div>
+                
+                <button
+                  type="submit"
+                  className="group relative w-full overflow-hidden border border-pandora-gold px-8 py-5 text-[12px] font-semibold uppercase tracking-[0.15em] text-pandora-gold transition-all hover:bg-pandora-gold hover:text-white mt-4"
                 >
-                  User
-                </th>
-                <th
-                  className="p-2 text-center"
-                  style={{ border: "1px solid #ddd" }}
-                >
-                  Amount (In Thousands)
-                </th>
-                <th
-                  className="p-2 text-center"
-                  style={{ border: "1px solid #ddd" }}
-                >
-                  Time
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {bidHistory.map((entry, idx) => (
-                <tr key={idx}>
-                  <td
-                    className="p-2 text-center"
-                    style={{ border: "1px solid #ddd" }}
-                  >
-                    {entry.user}
-                  </td>
-                  <td
-                    className="p-2 text-center"
-                    style={{ border: "1px solid #ddd" }}
-                  >
-                    ${entry.amount}
-                  </td>
-                  <td
-                    className="p-2 text-center"
-                    style={{ border: "1px solid #ddd" }}
-                  >
-                    {entry.time}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+                  <span className="relative z-10">Submit Bid</span>
+                </button>
+              </form>
+              {feedback && (
+                <p className="mt-4 text-[13px] text-red-400 font-medium tracking-wide">
+                  {feedback}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column: Bid History */}
+          <div className="lg:col-span-5">
+            <div className="border border-white/10 bg-black/20 p-8 h-full min-h-[500px]">
+              <div className="flex items-center gap-3 mb-8 border-b border-white/10 pb-6">
+                <History size={18} className="text-white/60" />
+                <h2 className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">
+                  Bid History
+                </h2>
+              </div>
+              
+              <div className="space-y-6 overflow-y-auto max-h-[600px] pr-2 custom-scrollbar">
+                {bidHistory.length === 0 ? (
+                  <p className="text-[13px] text-white/40 italic font-serif">
+                    No bids placed yet. Be the first to bid.
+                  </p>
+                ) : (
+                  bidHistory.map((entry, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`flex items-center justify-between pb-4 border-b ${idx === 0 ? 'border-pandora-gold/30' : 'border-white/5'}`}
+                    >
+                      <div>
+                        <p className={`font-serif text-lg ${idx === 0 ? 'text-pandora-gold-light' : 'text-white'}`}>
+                          {entry.user}
+                        </p>
+                        <p className="text-[11px] uppercase tracking-[0.1em] text-white/40 mt-1">
+                          {entry.time}
+                        </p>
+                      </div>
+                      <p className={`font-serif text-xl ${idx === 0 ? 'text-pandora-gold-light font-medium' : 'text-white/70'}`}>
+                        ${entry.amount.toLocaleString()}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
 
-      {/* Footer */}
-      <footer
-        className="text-center text-2xl font-bold mt-10 py-4"
-        style={{
-          backgroundColor: "black",
-          color: "white",
-          fontFamily: "'Segoe UI'",
-        }}
-      >
-        <p id="winner-announcement" className="hidden">
+      <footer className="text-center text-2xl font-bold mt-10 py-4 hidden">
+        <p id="winner-announcement">
           Winner: <span id="winner-name"></span>
         </p>
       </footer>
