@@ -96,6 +96,18 @@ export default function Navbar() {
           {/* Right Side */}
           <div className="flex items-center gap-6">
             <Link
+              href="/seller"
+              className={cn(
+                "hidden text-[13px] font-medium uppercase tracking-[0.1em] transition-colors duration-500 md:block",
+                isActive
+                  ? "text-pandora-gold hover:text-pandora-gold-light"
+                  : "text-white/80 hover:text-white"
+              )}
+            >
+              Seller
+            </Link>
+
+            <Link
               href="/auth/login"
               className={cn(
                 "hidden text-[13px] font-medium uppercase tracking-[0.1em] transition-colors duration-500 md:block",
@@ -164,6 +176,13 @@ export default function Navbar() {
                   }}
                   className="mt-4 border-t border-pandora-cream pt-4"
                 >
+                  <Link
+                    href="/seller"
+                    onClick={() => setIsMobileOpen(false)}
+                    className="block py-3 text-[14px] font-medium uppercase tracking-[0.1em] text-pandora-charcoal transition-colors hover:text-pandora-gold"
+                  >
+                    Seller
+                  </Link>
                   <Link
                     href="/auth/login"
                     onClick={() => setIsMobileOpen(false)}
