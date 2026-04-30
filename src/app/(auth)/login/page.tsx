@@ -2,26 +2,47 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Mail, Lock, User, ArrowRight } from "lucide-react";
+import { Mail, Lock, ArrowRight } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
-export default function SignupPage() {
-  const [name, setName] = useState("");
+export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const supabase = createClient();
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // TODO: Implement with real Supabase credentials
-    console.log("Signup with:", name, email, password);
-    setLoading(false);
+    setError(null);
+    
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
+    }
+
+    router.push("/");
+    router.refresh();
   };
 
-  const handleGoogleSignup = async () => {
-    // TODO: Implement with real Supabase credentials
-    console.log("Google signup");
+  const handleGoogleLogin = async () => {
+    supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/callback`,
+      },
+    });
   };
 
   return (
@@ -41,40 +62,20 @@ export default function SignupPage() {
             PANDORA
           </Link>
           <h1 className="mt-8 font-serif text-3xl font-medium text-pandora-charcoal">
-            Join PANDORA
+            Welcome Back
           </h1>
           <p className="mt-2 text-[14px] text-pandora-gray">
-            Create your account to begin collecting and bidding.
+            Sign in to access your collection and bidding history.
           </p>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSignup} className="mt-10 space-y-5">
-          <div>
-            <label
-              htmlFor="name"
-              className="text-[11px] font-semibold uppercase tracking-[0.15em] text-pandora-gray"
-            >
-              Full Name
-            </label>
-            <div className="relative mt-2">
-              <User
-                size={16}
-                strokeWidth={1.5}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-pandora-gray-light"
-              />
-              <input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your full name"
-                required
-                className="w-full border border-pandora-cream bg-white py-3.5 pl-11 pr-4 text-[14px] text-pandora-charcoal placeholder:text-pandora-gray-light/60 focus:border-pandora-gold focus:outline-none transition-colors"
-              />
+        <form onSubmit={handleEmailLogin} className="mt-10 space-y-5">
+          {error && (
+            <div className="bg-red-50 text-red-600 p-3 text-sm rounded-md border border-red-200">
+              {error}
             </div>
-          </div>
-
+          )}
           <div>
             <label
               htmlFor="email"
@@ -101,12 +102,20 @@ export default function SignupPage() {
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="text-[11px] font-semibold uppercase tracking-[0.15em] text-pandora-gray"
-            >
-              Password
-            </label>
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="password"
+                className="text-[11px] font-semibold uppercase tracking-[0.15em] text-pandora-gray"
+              >
+                Password
+              </label>
+              <Link
+                href="/reset"
+                className="text-[12px] text-pandora-gold transition-colors hover:text-pandora-gold-light"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <div className="relative mt-2">
               <Lock
                 size={16}
@@ -118,9 +127,8 @@ export default function SignupPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Minimum 8 characters"
+                placeholder="••••••••"
                 required
-                minLength={8}
                 className="w-full border border-pandora-cream bg-white py-3.5 pl-11 pr-4 text-[14px] text-pandora-charcoal placeholder:text-pandora-gray-light/60 focus:border-pandora-gold focus:outline-none transition-colors"
               />
             </div>
@@ -131,7 +139,7 @@ export default function SignupPage() {
             disabled={loading}
             className="group flex w-full items-center justify-center gap-3 bg-pandora-charcoal py-4 text-[12px] font-semibold uppercase tracking-[0.15em] text-white transition-colors hover:bg-pandora-gold disabled:opacity-50"
           >
-            {loading ? "Creating Account..." : "Create Account"}
+            {loading ? "Signing In..." : "Sign In"}
             {!loading && (
               <ArrowRight
                 size={14}
@@ -150,9 +158,9 @@ export default function SignupPage() {
           <div className="h-px flex-1 bg-pandora-cream" />
         </div>
 
-        {/* Google Signup */}
+        {/* Google Login */}
         <button
-          onClick={handleGoogleSignup}
+          onClick={handleGoogleLogin}
           className="flex w-full items-center justify-center gap-3 border border-pandora-cream bg-white py-4 text-[13px] font-medium text-pandora-charcoal transition-colors hover:bg-pandora-ivory"
         >
           <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -176,33 +184,14 @@ export default function SignupPage() {
           Continue with Google
         </button>
 
-        {/* Terms */}
-        <p className="mt-6 text-center text-[12px] leading-relaxed text-pandora-gray-light">
-          By creating an account you agree to our{" "}
-          <Link
-            href="/terms"
-            className="text-pandora-charcoal underline hover:text-pandora-gold"
-          >
-            Terms of Service
-          </Link>{" "}
-          and{" "}
-          <Link
-            href="/privacy"
-            className="text-pandora-charcoal underline hover:text-pandora-gold"
-          >
-            Privacy Policy
-          </Link>
-          .
-        </p>
-
         {/* Footer */}
-        <p className="mt-6 text-center text-[13px] text-pandora-gray">
-          Already have an account?{" "}
+        <p className="mt-8 text-center text-[13px] text-pandora-gray">
+          Don&apos;t have an account?{" "}
           <Link
-            href="/auth/login"
+            href="/signup"
             className="font-semibold text-pandora-charcoal transition-colors hover:text-pandora-gold"
           >
-            Sign In
+            Create Account
           </Link>
         </p>
       </motion.div>

@@ -13,9 +13,8 @@ import {
   Clock,
 } from "lucide-react";
 
-/* ────────────────────────────────────────────
-   Fade-in animation wrapper
-   ──────────────────────────────────────────── */
+
+  
 
 function FadeIn({
   children,
@@ -39,9 +38,8 @@ function FadeIn({
   );
 }
 
-/* ════════════════════════════════════════════
-   SECTION 1 — HERO (Louis Vuitton style)
-   ════════════════════════════════════════════ */
+
+   // SECTION 1 — HERO 
 
 function HeroSection() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -72,12 +70,11 @@ function HeroSection() {
           priority
           className="editorial-image"
         />
-        {/* Gradient overlays for text readability */}
+        
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/50" />
         <div className="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent" />
       </motion.div>
 
-      {/* Hero Content */}
       <motion.div
         style={{ y: textY }}
         className="relative z-10 flex h-full flex-col items-center justify-center px-6 text-center"
@@ -215,9 +212,8 @@ function EditorialGallery() {
           {editorialItems.map((item, index) => (
             <FadeIn key={index} delay={0.1}>
               <div
-                className={`flex flex-col items-center gap-12 lg:flex-row lg:gap-20 ${
-                  item.position === "right" ? "lg:flex-row-reverse" : ""
-                }`}
+                className={`flex flex-col items-center gap-12 lg:flex-row lg:gap-20 ${item.position === "right" ? "lg:flex-row-reverse" : ""
+                  }`}
               >
                 {/* Image */}
                 <div className="relative w-full overflow-hidden lg:w-3/5">

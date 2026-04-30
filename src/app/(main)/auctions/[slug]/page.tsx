@@ -1,20 +1,20 @@
 "use client";
 
+import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { use } from "react";
+import { ArrowLeft, Clock, Eye, Shield, Award } from "lucide-react";
 import { auctionItems } from "@/lib/auction-data";
 
-export default function AuctionItemPage({
+export default async function AuctionDetailPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const { slug } = use(params);
-  const item = auctionItems.find((i) => i.slug === slug);
+  const resolvedParams = await params;
+  const artifact = auctionItems.find((i: any) => i.slug === resolvedParams.slug);
 
-  if (!item) {
+  if (!artifact) {
     notFound();
   }
 
@@ -42,7 +42,7 @@ export default function AuctionItemPage({
       </header>
 
       {/* First Video */}
-      {item.videos[0] && (
+      {artifact.videos[0] && (
         <section className="w-full" style={{ margin: "0", marginTop: "-10px" }}>
           <video
             autoPlay
@@ -50,7 +50,7 @@ export default function AuctionItemPage({
             className="w-full"
             style={{ borderRadius: "9px" }}
           >
-            <source src={item.videos[0]} type="video/mp4" />
+            <source src={artifact.videos[0]} type="video/mp4" />
           </video>
         </section>
       )}
@@ -64,17 +64,17 @@ export default function AuctionItemPage({
           margin: "1rem",
         }}
       >
-        <h2 className="text-3xl font-serif mb-6">{item.title}</h2>
+        <h2 className="text-3xl font-serif mb-6">{artifact.title}</h2>
         <p
           className="text-base leading-relaxed"
           style={{ color: "white", fontFamily: "'Segoe UI'" }}
         >
-          {item.description}
+          {artifact.description}
         </p>
       </section>
 
       {/* Second Video or Image Gallery */}
-      {item.videos[1] ? (
+      {artifact.videos[1] ? (
         <section className="w-full" style={{ margin: "50px 0" }}>
           <video
             loop
@@ -83,24 +83,26 @@ export default function AuctionItemPage({
             className="w-full"
             style={{ borderRadius: "9px" }}
           >
-            <source src={item.videos[1]} type="video/mp4" />
+            <source src={artifact.videos[1]} type="video/mp4" />
           </video>
         </section>
-      ) : item.images.length > 0 ? (
+      ) : artifact.images.length > 0 ? (
         <section
           className="flex justify-center flex-wrap"
           style={{ gap: "4rem", margin: "3rem 0", maxWidth: "1000px" }}
         >
-          {item.images.map((img, idx) => (
-            <div key={idx} className="relative" style={{ height: "300px", width: "300px" }}>
-              <Image
-                src={img}
-                alt={`${item.title} ${idx + 1}`}
-                fill
-                className="object-cover rounded-lg"
-              />
-            </div>
-          ))}
+          <div className="mt-4 grid grid-cols-2 gap-4">
+            {artifact.images.map((img: any, idx: number) => (
+              <div key={idx} className="relative aspect-square">
+                <Image
+                  src={img}
+                  alt={`${artifact.title} ${idx + 1}`}
+                  fill
+                  className="object-cover rounded-lg"
+                />
+              </div>
+            ))}
+          </div>
         </section>
       ) : null}
 
@@ -129,17 +131,17 @@ export default function AuctionItemPage({
             marginTop: "30px",
           }}
         >
-          {item.story}
+          {artifact.story}
         </p>
         <h2 className="text-2xl font-serif">
-          Bid starts from - {item.startingBid}
+          Bid starts from - {artifact.startingBid}
         </h2>
       </section>
 
       {/* Bid Now Button */}
       <div className="text-center my-8">
         <Link
-          href={`/auctions/${item.slug}/bid`}
+          href={`/auctions/${artifact.slug}/bid`}
           className="inline-block px-6 py-3 text-lg text-white rounded-md transition-colors"
           style={{
             backgroundColor: "#007BFF",

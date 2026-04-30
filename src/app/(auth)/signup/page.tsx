@@ -2,25 +2,56 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { Mail, Lock, ArrowRight } from "lucide-react";
+import { Mail, Lock, User, ArrowRight } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
+export default function SignupPage() {
+  const router = useRouter();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const supabase = createClient();
+
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // TODO: Implement with real Supabase credentials
-    console.log("Login with:", email, password);
-    setLoading(false);
+    setError(null);
+    
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: name,
+        },
+        emailRedirectTo: `${window.location.origin}/callback`,
+      },
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
+    }
+
+    // Assuming auto-login or requiring email verification:
+    // With auto-login on signup (if email verif is off in Supabase), redirect to home.
+    router.push("/");
+    router.refresh();
   };
 
-  const handleGoogleLogin = async () => {
-    // TODO: Implement with real Supabase credentials
-    console.log("Google login");
+  const handleGoogleSignup = async () => {
+    supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/callback`,
+      },
+    });
   };
 
   return (
@@ -40,15 +71,45 @@ export default function LoginPage() {
             PANDORA
           </Link>
           <h1 className="mt-8 font-serif text-3xl font-medium text-pandora-charcoal">
-            Welcome Back
+            Join PANDORA
           </h1>
           <p className="mt-2 text-[14px] text-pandora-gray">
-            Sign in to access your collection and bidding history.
+            Create your account to begin collecting and bidding.
           </p>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleEmailLogin} className="mt-10 space-y-5">
+        <form onSubmit={handleSignup} className="mt-10 space-y-5">
+          {error && (
+            <div className="bg-red-50 text-red-600 p-3 text-sm rounded-md border border-red-200">
+              {error}
+            </div>
+          )}
+          <div>
+            <label
+              htmlFor="name"
+              className="text-[11px] font-semibold uppercase tracking-[0.15em] text-pandora-gray"
+            >
+              Full Name
+            </label>
+            <div className="relative mt-2">
+              <User
+                size={16}
+                strokeWidth={1.5}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-pandora-gray-light"
+              />
+              <input
+                id="name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Your full name"
+                required
+                className="w-full border border-pandora-cream bg-white py-3.5 pl-11 pr-4 text-[14px] text-pandora-charcoal placeholder:text-pandora-gray-light/60 focus:border-pandora-gold focus:outline-none transition-colors"
+              />
+            </div>
+          </div>
+
           <div>
             <label
               htmlFor="email"
@@ -75,20 +136,12 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <div className="flex items-center justify-between">
-              <label
-                htmlFor="password"
-                className="text-[11px] font-semibold uppercase tracking-[0.15em] text-pandora-gray"
-              >
-                Password
-              </label>
-              <Link
-                href="/auth/reset"
-                className="text-[12px] text-pandora-gold transition-colors hover:text-pandora-gold-light"
-              >
-                Forgot password?
-              </Link>
-            </div>
+            <label
+              htmlFor="password"
+              className="text-[11px] font-semibold uppercase tracking-[0.15em] text-pandora-gray"
+            >
+              Password
+            </label>
             <div className="relative mt-2">
               <Lock
                 size={16}
@@ -100,8 +153,9 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Minimum 8 characters"
                 required
+                minLength={8}
                 className="w-full border border-pandora-cream bg-white py-3.5 pl-11 pr-4 text-[14px] text-pandora-charcoal placeholder:text-pandora-gray-light/60 focus:border-pandora-gold focus:outline-none transition-colors"
               />
             </div>
@@ -112,7 +166,7 @@ export default function LoginPage() {
             disabled={loading}
             className="group flex w-full items-center justify-center gap-3 bg-pandora-charcoal py-4 text-[12px] font-semibold uppercase tracking-[0.15em] text-white transition-colors hover:bg-pandora-gold disabled:opacity-50"
           >
-            {loading ? "Signing In..." : "Sign In"}
+            {loading ? "Creating Account..." : "Create Account"}
             {!loading && (
               <ArrowRight
                 size={14}
@@ -131,9 +185,9 @@ export default function LoginPage() {
           <div className="h-px flex-1 bg-pandora-cream" />
         </div>
 
-        {/* Google Login */}
+        {/* Google Signup */}
         <button
-          onClick={handleGoogleLogin}
+          onClick={handleGoogleSignup}
           className="flex w-full items-center justify-center gap-3 border border-pandora-cream bg-white py-4 text-[13px] font-medium text-pandora-charcoal transition-colors hover:bg-pandora-ivory"
         >
           <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -157,14 +211,33 @@ export default function LoginPage() {
           Continue with Google
         </button>
 
-        {/* Footer */}
-        <p className="mt-8 text-center text-[13px] text-pandora-gray">
-          Don&apos;t have an account?{" "}
+        {/* Terms */}
+        <p className="mt-6 text-center text-[12px] leading-relaxed text-pandora-gray-light">
+          By creating an account you agree to our{" "}
           <Link
-            href="/auth/signup"
+            href="/terms"
+            className="text-pandora-charcoal underline hover:text-pandora-gold"
+          >
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link
+            href="/privacy"
+            className="text-pandora-charcoal underline hover:text-pandora-gold"
+          >
+            Privacy Policy
+          </Link>
+          .
+        </p>
+
+        {/* Footer */}
+        <p className="mt-6 text-center text-[13px] text-pandora-gray">
+          Already have an account?{" "}
+          <Link
+            href="/login"
             className="font-semibold text-pandora-charcoal transition-colors hover:text-pandora-gold"
           >
-            Create Account
+            Sign In
           </Link>
         </p>
       </motion.div>
