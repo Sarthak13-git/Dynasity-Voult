@@ -1,41 +1,31 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { notFound, useRouter } from "next/navigation";
-import Link from "next/link";
-import { motion } from "motion/react";
-import { ArrowLeft, Shield } from "lucide-react";
+import { use } from "react";
 import { auctionItems } from "@/lib/auction-data";
+import { Clock, Trophy, ArrowLeft, History } from "lucide-react";
 
 const botNames = ["Kurt Hansen", "Albert Wesker", "Joseph Stalin"];
-const botMaxBid = 50000;
-const minIncrement = 500;
-const userName = "You";
+const botMaxBid = 40000;
+const minIncrement = 200;
+const userName = "Saburo Arasaka";
 
-type BidEntry = {
+interface BidEntry {
   user: string;
   amount: number;
   time: string;
-};
+}
 
-export default function BidPage({
+export default function BiddingPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  const { slug } = use(params);
+  const item = auctionItems.find((i) => i.slug === slug);
   const router = useRouter();
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [artifact, setArtifact] = useState<any>(null);
-
-  useEffect(() => {
-    params.then((p) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const found = auctionItems.find((i: any) => i.slug === p.slug);
-      setArtifact(found);
-    });
-  }, [params]);
 
   const [currentHighestBid, setCurrentHighestBid] = useState(0);
   const [bidCount, setBidCount] = useState(0);
@@ -46,7 +36,6 @@ export default function BidPage({
   const [auctionEnded, setAuctionEnded] = useState(false);
   const [winner, setWinner] = useState<BidEntry | null>(null);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/purity
   const bidEndTimeRef = useRef(Date.now() + 20000);
   const highestBidRef = useRef(0);
   const bidHistoryRef = useRef<BidEntry[]>([]);
@@ -136,11 +125,7 @@ export default function BidPage({
     }
   };
 
-  if (artifact === null) {
-    return <div>Loading...</div>;
-  }
-
-  if (artifact === undefined) {
+  if (!item) {
     notFound();
   }
 
@@ -150,40 +135,34 @@ export default function BidPage({
   // Winner screen
   if (auctionEnded && winner) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: "black", color: "white" }}
-      >
-        <div
-          className="text-center p-8 rounded-2xl max-w-lg w-[90%]"
-          style={{
-            background:
-              "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(45,44,51,1) 100%)",
-          }}
-        >
-          <h1 className="text-4xl font-bold mb-4">Auction Winner!</h1>
-          <p className="text-xl mb-2">Congratulations to:</p>
-          <p className="text-2xl font-bold" style={{ color: "#63dff0" }}>
-            {winner.user}
+      <div className="min-h-screen bg-pandora-charcoal flex items-center justify-center text-white px-6">
+        <div className="relative text-center p-12 max-w-lg w-full border border-pandora-gold/30 bg-pandora-charcoal-light/30 backdrop-blur-sm flex flex-col items-center">
+          <Trophy size={48} className="text-pandora-gold-light mb-6" strokeWidth={1} />
+          <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-pandora-gold-light mb-4">
+            Auction Concluded
           </p>
-          <p className="text-xl mt-4">
-            Winning Bid:{" "}
-            <span style={{ color: "#63dff0", fontWeight: "bold" }}>
-              ${winner.amount}K
-            </span>
-          </p>
-          <p className="mt-2">Time of Winning Bid: {winner.time}</p>
+          <h1 className="font-serif text-4xl md:text-5xl font-medium mb-8">
+            The Winner Is
+          </h1>
+          
+          <div className="w-full border-t border-b border-white/10 py-6 mb-8">
+            <p className="font-serif text-3xl font-medium text-white mb-2">
+              {winner.user}
+            </p>
+            <p className="text-[13px] uppercase tracking-[0.2em] text-white/60 mb-4">
+              Winning Bid
+            </p>
+            <p className="font-serif text-4xl font-medium text-pandora-gold-light">
+              ${winner.amount.toLocaleString()}
+            </p>
+          </div>
+          
           <button
             onClick={() => router.push("/auctions")}
-            className="mt-6 px-6 py-3 rounded-lg cursor-pointer text-white border-none"
-            style={{
-              background:
-                "linear-gradient(to right, #2C5364, #203A43, #0F2027)",
-              fontFamily: "'Segoe UI'",
-              fontSize: "1rem",
-            }}
+            className="group inline-flex items-center gap-3 border border-pandora-gold px-8 py-4 text-[12px] font-semibold uppercase tracking-[0.15em] text-pandora-gold transition-all hover:bg-pandora-gold hover:text-white"
           >
-            Return
+            <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-1" />
+            Return to Auctions
           </button>
         </div>
       </div>
@@ -191,170 +170,159 @@ export default function BidPage({
   }
 
   return (
-    <div
-      className="flex min-h-screen flex-col bg-pandora-white font-sans text-pandora-charcoal"
-      style={{ fontFamily: "'Segoe UI', sans-serif" }}
-    >
-      {/* Bid Navbar */}
-      <header className="fixed z-50 flex w-full items-center justify-between bg-white/80 px-6 py-4 backdrop-blur-md md:px-12">
-        <Link
-          href={`/auctions/${artifact.slug}`}
-          className="flex items-center gap-2 text-sm font-medium transition-colors hover:text-pandora-gold"
+    <div className="min-h-screen bg-pandora-charcoal text-white selection:bg-pandora-gold selection:text-white pb-24">
+      {/* Header */}
+      <header className="w-full flex items-center justify-between px-6 py-8 border-b border-white/10">
+        <button
+          onClick={() => router.back()}
+          className="group flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60 hover:text-pandora-gold transition-colors"
         >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Details
-        </Link>
-        <span className="font-serif text-xl tracking-widest text-black">
-          PANDORA
-        </span>
-        <div className="w-24 border border-pandora-cream p-1 text-center">
-          <span className="block text-[10px] uppercase tracking-widest text-pandora-gray">
-            Lot No.
-          </span>
-          <span className="font-mono text-sm font-bold">
-            {String(artifact.slug || "001").substring(0, 3).toUpperCase()}
-          </span>
-        </div>
+          <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-1" />
+          Back
+        </button>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-pandora-gold-light">
+          Live Auction
+        </p>
+        <div className="w-20" /> {/* Spacer for centering */}
       </header>
 
-      <div className="flex flex-1 flex-col pt-20 lg:flex-row">
-        {/* Left: Artifact Preview (Sticky on Desktop) */}
-        <div className="w-full border-r border-pandora-cream bg-pandora-cream/10 lg:sticky lg:top-0 lg:h-screen lg:w-[45%]">
-          <div className="flex h-full flex-col p-6 md:p-12">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="relative aspect-square w-full rounded-sm bg-white p-4 shadow-sm"
-            >
-              <Image
-                src={artifact.image || (artifact.images && artifact.images[0]) || "/pandora.png"}
-                alt={artifact.title}
-                fill
-                className="object-contain p-4"
-                priority
-              />
-            </motion.div>
+      <main className="mx-auto max-w-[1200px] px-6 lg:px-12 mt-16">
+        {/* Item Header */}
+        <div className="text-center mb-16">
+          <h1 className="font-serif text-4xl md:text-6xl font-medium text-white mb-4">
+            {item.title}
+          </h1>
+          <p className="text-[13px] uppercase tracking-[0.2em] text-white/50">
+            Premium Archive
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+          {/* Left Column: Bidding Form & Status */}
+          <div className="lg:col-span-7 space-y-12">
             
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="mt-8 flex-1"
-            >
-              <h1 className="font-serif text-3xl font-bold leading-tight md:text-4xl text-black">
-                {artifact.title}
-              </h1>
-              <p className="mt-4 text-sm leading-relaxed text-pandora-gray">
-                {artifact.description}
-              </p>
+            {/* Status Panel */}
+            <div className="border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
+              <div className="flex items-center gap-3 mb-8">
+                <Clock size={18} className="text-pandora-gold-light" />
+                <h2 className="text-[11px] font-semibold uppercase tracking-[0.3em] text-pandora-gold-light">
+                  Bidding Status
+                </h2>
+              </div>
               
-              <div className="mt-8 flex items-start gap-4 border-t border-pandora-cream pt-6">
-                <Shield className="h-6 w-6 shrink-0 text-pandora-gold" />
+              <div className="grid grid-cols-2 gap-8">
                 <div>
-                  <h4 className="text-[11px] font-semibold uppercase tracking-[0.15em] text-pandora-charcoal">
-                    Authentication Verified
-                  </h4>
-                  <p className="mt-1 text-[13px] text-pandora-gray">
-                    This artifact has been authenticated by PANDORA experts. Bids
-                    are legally binding.
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-white/40 mb-2">
+                    Current Highest Bid
+                  </p>
+                  <p className="font-serif text-4xl font-medium text-pandora-gold-light">
+                    ${currentHighestBid.toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-white/40 mb-2">
+                    Time Remaining
+                  </p>
+                  <p className="font-serif text-4xl font-medium text-white flex items-baseline gap-2">
+                    {String(minutes).padStart(2, "0")}<span className="text-xl text-white/50">:</span>{String(seconds).padStart(2, "0")}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-white/40 mb-2">
+                    Total Bids
+                  </p>
+                  <p className="font-serif text-2xl font-medium text-white">
+                    {bidCount}
                   </p>
                 </div>
               </div>
-            </motion.div>
-          </div>
-        </div>
-
-        {/* Right: Bidding Interface */}
-        <div className="flex w-full flex-col lg:w-[55%]">
-          {/* Status Header */}
-          <div className="sticky top-16 z-10 flex items-center justify-between border-b border-pandora-cream bg-pandora-ivory/80 px-6 py-4 backdrop-blur-md md:px-12">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-pandora-gray">
-                Current Bid
-              </p>
-              <div className="mt-1 flex items-baseline gap-2">
-                <span className="font-serif text-2xl text-pandora-charcoal">
-                  ${currentHighestBid.toLocaleString()}
-                </span>
-                <span className="text-sm text-pandora-gray">
-                  ({bidCount} bids)
-                </span>
-              </div>
             </div>
-            <div className="text-right">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-pandora-gray">
-                Time Remaining
-              </p>
-              <div className="mt-1 font-mono text-xl text-pandora-charcoal">
-                {String(minutes).padStart(2, "0")}:
-                {String(seconds).padStart(2, "0")}
-              </div>
-            </div>
-          </div>
 
-          {/* Bidding Form */}
-          <div className="border-t border-pandora-cream bg-white p-6 md:p-12">
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <label htmlFor="bid-amount" className="text-sm text-pandora-gray">
-                Enter your bid amount:
-              </label>
-              <div className="flex gap-4">
-                <input
-                  type="number"
-                  id="bid-amount"
-                  value={bidAmount}
-                  onChange={(e) => setBidAmount(e.target.value)}
-                  placeholder="Enter bid in USD"
-                  required
-                  className="w-full border border-pandora-cream bg-pandora-ivory px-4 py-3 text-pandora-charcoal focus:border-pandora-gold focus:outline-none"
-                />
+            {/* Place Bid Panel */}
+            <div className="border border-pandora-gold/20 bg-pandora-gold/5 p-8 backdrop-blur-sm">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.3em] text-pandora-gold-light mb-8">
+                Place Your Bid
+              </h2>
+              <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                <div>
+                  <label htmlFor="bid-amount" className="block text-[11px] uppercase tracking-[0.2em] text-white/60 mb-3">
+                    Enter bid amount (In K USD)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 font-serif text-xl">$</span>
+                    <input
+                      type="number"
+                      id="bid-amount"
+                      value={bidAmount}
+                      onChange={(e) => setBidAmount(e.target.value)}
+                      placeholder={`${currentHighestBid + minIncrement}`}
+                      required
+                      className="w-full bg-transparent border-b border-white/20 px-10 py-4 text-2xl font-serif text-white focus:outline-none focus:border-pandora-gold-light transition-colors placeholder:text-white/20"
+                    />
+                  </div>
+                </div>
+                
                 <button
                   type="submit"
-                  className="shrink-0 bg-pandora-charcoal px-8 py-3 text-[13px] font-semibold uppercase tracking-widest text-white transition-colors hover:bg-black"
+                  className="group relative w-full overflow-hidden border border-pandora-gold px-8 py-5 text-[12px] font-semibold uppercase tracking-[0.15em] text-pandora-gold transition-all hover:bg-pandora-gold hover:text-white mt-4"
                 >
-                  Place Bid
+                  <span className="relative z-10">Submit Bid</span>
                 </button>
-              </div>
-            </form>
-            {feedback && (
-              <p className="mt-3 text-sm text-red-500">{feedback}</p>
-            )}
-          </div>
-          
-          {/* Bid History */}
-          <div className="flex-1 overflow-y-auto bg-pandora-cream/20 p-6 md:p-12">
-            <h2 className="mb-6 font-serif text-2xl text-pandora-charcoal">
-              Bid History
-            </h2>
-            <div className="flex flex-col gap-4">
-              {bidHistory.map((entry, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between rounded bg-white p-4 shadow-sm"
-                >
-                  <div>
-                    <span className="font-semibold text-pandora-charcoal">
-                      {entry.user}
-                    </span>
-                    <span className="ml-2 text-xs text-pandora-gray">
-                      {entry.time}
-                    </span>
-                  </div>
-                  <span className="font-mono text-lg font-medium text-pandora-charcoal">
-                    ${entry.amount.toLocaleString()}
-                  </span>
-                </div>
-              ))}
-              {bidHistory.length === 0 && (
-                <p className="text-pandora-gray text-sm py-4 text-center">
-                  No bids placed yet. Be the first to bid!
+              </form>
+              {feedback && (
+                <p className="mt-4 text-[13px] text-red-400 font-medium tracking-wide">
+                  {feedback}
                 </p>
               )}
             </div>
           </div>
+
+          {/* Right Column: Bid History */}
+          <div className="lg:col-span-5">
+            <div className="border border-white/10 bg-black/20 p-8 h-full min-h-[500px]">
+              <div className="flex items-center gap-3 mb-8 border-b border-white/10 pb-6">
+                <History size={18} className="text-white/60" />
+                <h2 className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/60">
+                  Bid History
+                </h2>
+              </div>
+              
+              <div className="space-y-6 overflow-y-auto max-h-[600px] pr-2 custom-scrollbar">
+                {bidHistory.length === 0 ? (
+                  <p className="text-[13px] text-white/40 italic font-serif">
+                    No bids placed yet. Be the first to bid.
+                  </p>
+                ) : (
+                  bidHistory.map((entry, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`flex items-center justify-between pb-4 border-b ${idx === 0 ? 'border-pandora-gold/30' : 'border-white/5'}`}
+                    >
+                      <div>
+                        <p className={`font-serif text-lg ${idx === 0 ? 'text-pandora-gold-light' : 'text-white'}`}>
+                          {entry.user}
+                        </p>
+                        <p className="text-[11px] uppercase tracking-[0.1em] text-white/40 mt-1">
+                          {entry.time}
+                        </p>
+                      </div>
+                      <p className={`font-serif text-xl ${idx === 0 ? 'text-pandora-gold-light font-medium' : 'text-white/70'}`}>
+                        ${entry.amount.toLocaleString()}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
+
+      <footer className="text-center text-2xl font-bold mt-10 py-4 hidden">
+        <p id="winner-announcement">
+          Winner: <span id="winner-name"></span>
+        </p>
+      </footer>
     </div>
   );
 }

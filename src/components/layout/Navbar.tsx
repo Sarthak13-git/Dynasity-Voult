@@ -5,13 +5,15 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
-import { Menu, X, Search, User as UserIcon, LogOut } from "lucide-react";
+import { Menu, X, Search, User as UserIcon, LogOut, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import { useCartStore } from "@/lib/cart-store";
 
 const navLinks = [
   { href: "/collection", label: "Collection" },
+  { href: "/buy", label: "Buy" },
   { href: "/auctions", label: "Auctions" },
   { href: "/exhibitions", label: "Exhibitions" },
   { href: "/about", label: "About" },
@@ -23,6 +25,8 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const pathname = usePathname();
+  const count = useCartStore((s) => s.totalItems());
+  const openCart = useCartStore((s) => s.openCart);
 
   const supabase = createClient();
 
@@ -145,6 +149,24 @@ export default function Navbar() {
             >
               Call Us
             </Link>
+
+            <button
+              onClick={openCart}
+              className={cn(
+                "relative flex items-center transition-colors duration-500",
+                isActive
+                  ? "text-pandora-charcoal hover:text-black"
+                  : "text-white hover:text-white/80"
+              )}
+              aria-label="Open cart"
+            >
+              <ShoppingBag size={20} strokeWidth={1} />
+              {count > 0 && (
+                <span className="absolute -right-2 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-pandora-gold text-[9px] font-bold text-white">
+                  {count}
+                </span>
+              )}
+            </button>
 
             {user ? (
                <div className="flex items-center gap-4">

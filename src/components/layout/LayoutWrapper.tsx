@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import CartDrawer from "@/components/layout/CartDrawer";
 import React from "react";
 
 export default function LayoutWrapper({
@@ -20,6 +21,7 @@ export default function LayoutWrapper({
       {!isDashboard && <Navbar />}
       <main>{children}</main>
       {!isDashboard && <Footer />}
+      <CartDrawer />
     </>
   );
 }
