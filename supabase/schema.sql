@@ -44,12 +44,13 @@ CREATE TABLE public.artifacts (
     category IN (
       'painting', 'sculpture', 'manuscript', 'jewelry',
       'antiquity', 'decorative_art', 'timepiece', 'textile',
-      'weapon', 'numismatic', 'other'
+      'weapon', 'numismatic', 'other', 'arms_and_armor', 'objets_d_art'
     )
   ),
   images TEXT[] DEFAULT '{}',
   thumbnail_url TEXT,
   estimated_value NUMERIC(15, 2) NOT NULL DEFAULT 0,
+  buy_now_price NUMERIC(15, 2),
   currency TEXT NOT NULL DEFAULT 'USD',
   status TEXT NOT NULL DEFAULT 'archived' CHECK (
     status IN ('archived', 'available', 'on_auction', 'sold', 'on_exhibition', 'reserved')
@@ -298,3 +299,21 @@ CREATE INDEX idx_bids_auction ON public.bids(auction_id);
 CREATE INDEX idx_bids_user ON public.bids(user_id);
 CREATE INDEX idx_bookings_user ON public.bookings(user_id);
 CREATE INDEX idx_bookings_venue ON public.bookings(venue_id);
+
+-- ─── Favorites ───
+
+CREATE TABLE public.favorites (
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  artifact_id UUID NOT NULL REFERENCES public.artifacts(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, artifact_id)
+);
+
+ALTER TABLE public.favorites ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own favorites"
+  ON public.favorites FOR ALL
+  USING (auth.uid() = user_id);
+
+CREATE INDEX idx_favorites_user ON public.favorites(user_id);
+CREATE INDEX idx_favorites_artifact ON public.favorites(artifact_id);

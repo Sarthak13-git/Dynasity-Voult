@@ -29,7 +29,7 @@ export default function SellerLayout({
     // Check if user is authenticated (you can replace with actual auth check)
     const checkAuth = () => {
       // Simulate auth check - replace with actual Supabase session check
-      const isLoggedIn = localStorage.getItem("authToken") || Math.random() > 0.5; // For demo
+      const isLoggedIn = localStorage.getItem("authToken") || true; // Set to true for demo since auth isn't fully set up
       const sellerInfo = localStorage.getItem("sellerInfo");
 
       setIsAuthenticated(!!isLoggedIn);
@@ -38,7 +38,7 @@ export default function SellerLayout({
 
       // Redirect if not authenticated
       if (!isLoggedIn) {
-        router.push("/auth/login?redirect=/seller");
+        router.push("/login?redirect=/seller");
         return;
       }
 

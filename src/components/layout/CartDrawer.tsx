@@ -152,7 +152,10 @@ export default function CartDrawer() {
                   Taxes and shipping calculated at checkout
                 </p>
 
-                <button className="mt-5 w-full bg-pandora-charcoal py-4 text-[12px] font-semibold uppercase tracking-[0.15em] text-white transition-all hover:bg-pandora-gold">
+                <button 
+                  onClick={() => alert("Checkout flow to be implemented.")}
+                  className="mt-5 w-full bg-pandora-charcoal py-4 text-[12px] font-semibold uppercase tracking-[0.15em] text-white transition-all hover:bg-pandora-gold"
+                >
                   Proceed to Checkout
                 </button>
 
