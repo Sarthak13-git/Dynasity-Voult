@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Menu, X, Search, User as UserIcon, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,6 +22,7 @@ export default function Navbar() {
   const [isHovered, setIsHovered] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const pathname = usePathname();
 
   const supabase = createClient();
 
@@ -55,7 +58,12 @@ export default function Navbar() {
     };
   }, [isMenuOpen]);
 
-  const isActive = isScrolled || isHovered || isMenuOpen;
+  if (pathname?.endsWith("/bid")) {
+    return null;
+  }
+
+  const isAuctionsPage = pathname === "/auctions";
+  const isActive = isScrolled || isHovered || isMenuOpen || isAuctionsPage;
 
   return (
     <>
@@ -114,6 +122,18 @@ export default function Navbar() {
           </Link>
 
           <div className="flex items-center gap-6 min-w-[140px] justify-end">
+            <Link
+              href="/seller"
+              className={cn(
+                "hidden text-[13px] font-medium uppercase tracking-[0.1em] transition-colors duration-500 md:block",
+                isActive
+                  ? "text-pandora-gold hover:text-pandora-gold-light"
+                  : "text-white/80 hover:text-white"
+              )}
+            >
+              Seller
+            </Link>
+
             <Link
               href="/contact"
               className={cn(
@@ -239,6 +259,13 @@ export default function Navbar() {
                     duration: 0.35,
                   }}
                 >
+                  <Link
+                    href="/seller"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="block py-3 text-[14px] font-medium uppercase tracking-[0.1em] text-pandora-charcoal transition-colors hover:text-pandora-gold"
+                  >
+                    Seller
+                  </Link>
                   {user ? (
                     <div className="flex flex-col gap-4">
                       <Link

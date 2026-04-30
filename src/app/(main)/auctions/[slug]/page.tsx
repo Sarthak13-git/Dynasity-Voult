@@ -32,13 +32,13 @@ export default async function AuctionDetailPage({
         className="w-full flex items-center justify-center py-4"
         style={{ backgroundColor: "black" }}
       >
-        <Image
+        {/* <Image
           src="/pandora.png"
           alt="Pandora's Box Logo"
           width={100}
           height={120}
           className="object-cover"
-        />
+        /> */}
       </header>
 
       {/* First Video */}
