@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Upload, X, Plus } from "lucide-react";
+import { addArtifact } from "@/lib/supabase/db";
 
 const CATEGORIES = [
   { value: "painting", label: "Painting" },
@@ -34,6 +35,7 @@ export default function AddProductPage() {
   const [dragActive, setDragActive] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -83,17 +85,39 @@ export default function AddProductPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Validate required fields
+      if (!formData.title || !formData.description || uploadedImages.length === 0) {
+        throw new Error("Please fill in all required fields");
+      }
 
-      console.log("Product Data:", {
-        ...formData,
+      // Create artifact data object
+      const artifactData = {
+        title: formData.title,
+        description: formData.description,
+        origin: formData.origin,
+        era: formData.era,
+        year_estimate: formData.year_estimate || null,
+        provenance: formData.provenance,
+        category: formData.category,
         images: uploadedImages,
-      });
+        thumbnail_url: uploadedImages[0],
+        estimated_value: parseFloat(formData.estimated_value) || 0,
+        currency: formData.currency,
+        status: "available" as const,
+        is_featured: false,
+      };
+
+      // Save to database
+      const result = await addArtifact(artifactData);
+      
+      console.log("✅ Product saved to database:", result);
 
       setSuccess(true);
+      
+      // Reset form after 2 seconds
       setTimeout(() => {
         setSuccess(false);
         setFormData({
@@ -109,8 +133,10 @@ export default function AddProductPage() {
         });
         setUploadedImages([]);
       }, 2000);
-    } catch (error) {
-      console.error("Error:", error);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save product";
+      setError(message);
+      console.error("❌ Error saving product:", err);
     } finally {
       setLoading(false);
     }
@@ -132,7 +158,16 @@ export default function AddProductPage() {
       {success && (
         <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
           <p className="text-sm font-medium text-green-800">
-            ✓ Product added successfully! Redirecting to your products...
+            ✓ Product added successfully to the database!
+          </p>
+        </div>
+      )}
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
+          <p className="text-sm font-medium text-red-800">
+            ✗ {error}
           </p>
         </div>
       )}
