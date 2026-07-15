@@ -1,8 +1,8 @@
 import { createClient } from "./client";
-import { createClient as createServerClient } from "./server";
 
 // Type definitions
 export interface ArtifactData {
+  id?: string;
   title: string;
   description?: string;
   origin?: string;
@@ -17,9 +17,13 @@ export interface ArtifactData {
   currency?: string;
   status?: "archived" | "available" | "on_auction" | "sold" | "on_exhibition" | "reserved";
   is_featured?: boolean;
+  slug?: string;
+  story?: string;
+  videos?: string[];
 }
 
 export interface AuctionData {
+  id?: string;
   artifact_id: string;
   title: string;
   description?: string;
@@ -39,13 +43,13 @@ export interface AuctionData {
  */
 export async function getAllArtifacts() {
   const supabase = createClient();
-  
+
   const { data, error } = await supabase
     .from("artifacts")
     .select("*")
     .order("created_at", { ascending: false });
 
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }
 
@@ -54,14 +58,14 @@ export async function getAllArtifacts() {
  */
 export async function getArtifactById(id: string) {
   const supabase = createClient();
-  
+
   const { data, error } = await supabase
     .from("artifacts")
     .select("*")
     .eq("id", id)
     .single();
 
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }
 
@@ -70,13 +74,13 @@ export async function getArtifactById(id: string) {
  */
 export async function getAllAuctions() {
   const supabase = createClient();
-  
+
   const { data, error } = await supabase
     .from("auctions")
     .select("*, artifacts(*)")
     .order("start_time", { ascending: false });
 
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }
 
@@ -85,14 +89,14 @@ export async function getAllAuctions() {
  */
 export async function getAuctionById(id: string) {
   const supabase = createClient();
-  
+
   const { data, error } = await supabase
     .from("auctions")
     .select("*, artifacts(*)")
     .eq("id", id)
     .single();
 
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }
 
@@ -101,14 +105,14 @@ export async function getAuctionById(id: string) {
  */
 export async function searchArtifacts(query: string) {
   const supabase = createClient();
-  
+
   const { data, error } = await supabase
     .from("artifacts")
     .select("*")
     .or(`title.ilike.%${query}%,category.ilike.%${query}%`)
     .order("created_at", { ascending: false });
 
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }
 
@@ -117,176 +121,87 @@ export async function searchArtifacts(query: string) {
  */
 export async function getArtifactsByCategory(category: string) {
   const supabase = createClient();
-  
+
   const { data, error } = await supabase
     .from("artifacts")
     .select("*")
     .eq("category", category)
     .order("created_at", { ascending: false });
 
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }
 
-// ============ SERVER-SIDE OPERATIONS (For admin/protected actions) ============
+// ============ CLIENT-SIDE HELPER OPERATIONS ============
 
 /**
- * Add a single artifact to database (Server only)
- * Requires authentication
+ * Get auction by its artifact's slug (public - client component friendly)
  */
-export async function addArtifact(artifactData: ArtifactData) {
-  const supabase = await createServerClient();
+export async function getAuctionBySlug(slug: string) {
+  const supabase = createClient();
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
 
-  const { data, error } = await supabase
-    .from("artifacts")
-    .insert([
-      {
-        title: artifactData.title,
-        description: artifactData.description || "",
-        origin: artifactData.origin || "",
-        era: artifactData.era || "",
-        year_estimate: artifactData.year_estimate || null,
-        provenance: artifactData.provenance || "",
-        category: artifactData.category,
-        images: artifactData.images || [],
-        thumbnail_url: artifactData.thumbnail_url || null,
-        estimated_value: artifactData.estimated_value,
-        buy_now_price: artifactData.buy_now_price || null,
-        currency: artifactData.currency || "USD",
-        status: artifactData.status || "available",
-        is_featured: artifactData.is_featured || false,
-      },
-    ])
-    .select();
+  let auction = null;
 
-  if (error) throw error;
-  return data?.[0];
+  if (isUuid) {
+    const { data, error } = await supabase
+      .from("auctions")
+      .select("*, artifacts(*)")
+      .eq("id", slug)
+      .maybeSingle();
+    
+    if (error) throw new Error(error.message);
+    auction = data;
+  }
+
+  if (!auction) {
+    const { data, error } = await supabase
+      .from("auctions")
+      .select("*, artifacts!inner(*)")
+      .eq("artifacts.slug", slug)
+      .maybeSingle();
+    
+    if (error) throw new Error(error.message);
+    auction = data;
+  }
+
+  return auction;
 }
 
 /**
- * Add multiple artifacts in bulk (Server only)
+ * Place a bid on an auction (authenticated user client operation via API)
  */
-export async function addArtifactsBulk(artifactsData: ArtifactData[]) {
-  const supabase = await createServerClient();
+export async function placeBid(auctionId: string, userId: string, amount: number) {
+  const response = await fetch("/api/bids", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      auction_id: auctionId,
+      bid_amount: amount,
+    }),
+  });
 
-  const formattedData = artifactsData.map((artifact) => ({
-    title: artifact.title,
-    description: artifact.description || "",
-    origin: artifact.origin || "",
-    era: artifact.era || "",
-    year_estimate: artifact.year_estimate || null,
-    provenance: artifact.provenance || "",
-    category: artifact.category,
-    images: artifact.images || [],
-    thumbnail_url: artifact.thumbnail_url || null,
-    estimated_value: artifact.estimated_value,
-    buy_now_price: artifact.buy_now_price || null,
-    currency: artifact.currency || "USD",
-    status: artifact.status || "available",
-    is_featured: artifact.is_featured || false,
-  }));
-
-  const { data, error } = await supabase
-    .from("artifacts")
-    .insert(formattedData)
-    .select();
-
-  if (error) throw error;
-  return data;
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Failed to place bid");
+  }
+  return data.bid;
 }
 
 /**
- * Update an artifact (Server only)
+ * Get bid history for an auction sorted by highest bid (public)
  */
-export async function updateArtifact(id: string, updates: Partial<ArtifactData>) {
-  const supabase = await createServerClient();
+export async function getBidHistory(auctionId: string) {
+  const supabase = createClient();
 
   const { data, error } = await supabase
-    .from("artifacts")
-    .update(updates)
-    .eq("id", id)
-    .select()
-    .single();
+    .from("bids")
+    .select("*, profiles(display_name, email)")
+    .eq("auction_id", auctionId)
+    .order("amount", { ascending: false });
 
-  if (error) throw error;
-  return data;
-}
-
-/**
- * Delete an artifact (Server only)
- */
-export async function deleteArtifact(id: string) {
-  const supabase = await createServerClient();
-
-  const { error } = await supabase
-    .from("artifacts")
-    .delete()
-    .eq("id", id);
-
-  if (error) throw error;
-}
-
-/**
- * Add an auction (Server only)
- */
-export async function addAuction(auctionData: AuctionData) {
-  const supabase = await createServerClient();
-
-  const { data, error } = await supabase
-    .from("auctions")
-    .insert([
-      {
-        artifact_id: auctionData.artifact_id,
-        title: auctionData.title,
-        description: auctionData.description || null,
-        start_time: auctionData.start_time,
-        end_time: auctionData.end_time,
-        starting_bid: auctionData.starting_bid,
-        current_bid: auctionData.current_bid || auctionData.starting_bid,
-        reserve_price: auctionData.reserve_price || null,
-        bid_increment: auctionData.bid_increment || 100,
-        status: auctionData.status || "upcoming",
-      },
-    ])
-    .select();
-
-  if (error) throw error;
-  return data?.[0];
-}
-
-/**
- * Update auction bid (Server only)
- */
-export async function updateAuctionBid(auctionId: string, newBid: number) {
-  const supabase = await createServerClient();
-
-  const { data, error } = await supabase
-    .from("auctions")
-    .update({ current_bid: newBid })
-    .eq("id", auctionId)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-/**
- * Close an auction (Server only)
- */
-export async function closeAuction(auctionId: string, winnerId?: string) {
-  const supabase = await createServerClient();
-
-  const { data, error } = await supabase
-    .from("auctions")
-    .update({
-      status: "ended",
-      winner_id: winnerId || null,
-    })
-    .eq("id", auctionId)
-    .select()
-    .single();
-
-  if (error) throw error;
+  if (error) throw new Error(error.message);
   return data;
 }

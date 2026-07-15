@@ -8,11 +8,16 @@ import {
   Plus,
   Package,
   Settings,
-  LogOut,
   ChevronRight,
   ShoppingBag,
+  User,
+  Folder,
+  LogOut,
+  ShoppingCart,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 
 export default function SellerLayout({
   children,
@@ -21,35 +26,60 @@ export default function SellerLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const supabase = createClient();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [sellerName, setSellerName] = useState("Seller");
+  const [avatarLetter, setAvatarLetter] = useState("S");
 
   useEffect(() => {
-    // Check if user is authenticated (you can replace with actual auth check)
-    const checkAuth = () => {
-      // Simulate auth check - replace with actual Supabase session check
-      const isLoggedIn = localStorage.getItem("authToken") || true; // Set to true for demo since auth isn't fully set up
-      const sellerInfo = localStorage.getItem("sellerInfo");
+    const checkAuth = async () => {
+      // 1. Fetch authenticated Supabase user (secure verification)
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-      setIsAuthenticated(!!isLoggedIn);
-      setIsRegistered(!!sellerInfo);
-      setLoading(false);
-
-      // Redirect if not authenticated
-      if (!isLoggedIn) {
-        router.push("/login?redirect=/seller");
+      if (userError || !user) {
+        setIsAuthenticated(false);
+        setIsRegistered(false);
+        setLoading(false);
+        router.push("/seller-hub");
         return;
       }
 
-      // Redirect to registration if authenticated but not registered (except on register page)
-      if (!sellerInfo && !pathname.includes("/register")) {
-        router.push("/seller/register");
+      // 2. Fetch user profile role and name details from profiles
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role, display_name, store_name, email")
+        .eq("id", user.id)
+        .single();
+
+      // Check role constraint to make sure they are a seller or admin
+      if (!profile || (profile.role !== "seller" && profile.role !== "admin")) {
+        setIsAuthenticated(true);
+        setIsRegistered(false);
+        setLoading(false);
+        if (!pathname.includes("/register")) {
+          router.push("/seller-hub/onboarding");
+        }
+        return;
       }
+
+      // Role is seller or admin
+      setIsAuthenticated(true);
+      setIsRegistered(true);
+
+      // Compute display name (prefer display_name, then store_name, fallback to email or 'Seller')
+      const name = profile.display_name || profile.store_name || user.user_metadata?.full_name || profile.email || "Seller";
+      setSellerName(name);
+
+      const firstChar = name.trim().charAt(0).toUpperCase();
+      setAvatarLetter(firstChar || "S");
+
+      setLoading(false);
     };
 
     checkAuth();
-  }, [router, pathname]);
+  }, [router, pathname, supabase]);
 
   if (loading) {
     return (
@@ -74,8 +104,10 @@ export default function SellerLayout({
   const sidebarLinks = [
     { href: "/seller", label: "Dashboard", icon: LayoutDashboard },
     { href: "/seller/products", label: "My Products", icon: Package },
-    { href: "/seller/add-product", label: "Add Product", icon: Plus },
-    { href: "/seller/settings", label: "Settings", icon: Settings },
+    { href: "/seller/orders", label: "Orders", icon: ShoppingCart },
+    { href: "/seller/wallet", label: "Wallet", icon: Wallet },
+    { href: "/seller/auctions", label: "My Auctions", icon: ShoppingBag },
+    { href: "/seller/settings", label: "My Info", icon: User },
   ];
 
   return (
@@ -85,13 +117,13 @@ export default function SellerLayout({
         {/* Brand */}
         <div className="flex h-16 items-center gap-3 border-b border-gray-100 px-6">
           <img
-            src="/pandora.png"
-            alt="PANDORA Logo"
+            src="/logo.png"
+            alt="Dynasity-Voult Logo"
             className="h-9 w-auto brightness-0"
           />
           <div>
             <p className="font-serif text-sm font-bold tracking-wider text-pandora-charcoal">
-              PANDORA
+              Dynasity-Voult
             </p>
             <p className="text-[10px] uppercase tracking-widest text-gray-400">
               Seller Hub
@@ -147,19 +179,12 @@ export default function SellerLayout({
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-gray-200 bg-white/80 px-8 backdrop-blur-md">
           <div>
             <p className="text-[13px] text-gray-400">
-              Welcome back, <span className="text-pandora-charcoal font-medium">Seller</span>
+              Welcome back, <span className="text-pandora-charcoal font-medium">{sellerName}</span>
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <Link
-              href="/seller/add-product"
-              className="flex items-center gap-2 rounded-lg bg-pandora-charcoal px-4 py-2 text-sm font-medium text-white hover:bg-pandora-charcoal/80 transition-colors"
-            >
-              <Plus size={18} strokeWidth={1.5} />
-              <span>Add Product</span>
-            </Link>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-pandora-charcoal text-xs font-semibold text-white">
-              S
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-pandora-charcoal text-xs font-semibold text-white uppercase">
+              {avatarLetter}
             </div>
           </div>
         </header>

@@ -1,30 +1,52 @@
-import { seedBuyArtifacts } from "@/lib/supabase/seed";
+import { seedBuyArtifacts, seedAuctionArtifactsAndAuctions } from "@/lib/supabase/seed";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 /**
  * API route to seed database with sample products
  * POST /api/seed/artifacts
  * 
- * Security: Add authentication check in production
+ * Security: Restricted to admin users only.
  */
 export async function POST(request: Request) {
   try {
-    // ⚠️ TODO: Add admin authentication check here
-    // Example:
-    // const session = await getSession();
-    // if (!session || session.user.role !== 'admin') {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
+    // ────────── NEW AUTH & ROLE CHECK SECURITY GUARD ──────────
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    // 1. Authentication check
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // 2. Authorization check (Query the profiles table for admin role)
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile || profile.role !== "admin") {
+      return NextResponse.json(
+        { error: "Unauthorized: Only admins can seed artifacts" },
+        { status: 403 }
+      );
+    }
+    // ──────────────────────────────────────────────────────────
 
     console.log("🌱 Starting database seed...");
     
-    const result = await seedBuyArtifacts();
+    const buyResult = await seedBuyArtifacts();
+    const auctionResult = await seedAuctionArtifactsAndAuctions();
     
     return NextResponse.json({
       success: true,
-      message: `✅ Successfully added ${result?.length || 0} artifacts to database`,
-      count: result?.length || 0,
-      data: result,
+      message: "✅ Database successfully seeded with catalog items and live auctions",
+      buyCount: buyResult?.length || 0,
+      auctionCount: auctionResult?.length || 0,
     });
   } catch (error) {
     console.error("❌ Seed error:", error);

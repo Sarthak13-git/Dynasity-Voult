@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 
 export default function SeedPage() {
   const [loading, setLoading] = useState(false);
@@ -58,13 +57,13 @@ export default function SeedPage() {
             </ul>
           </div>
 
-          <Button
+          <button
             onClick={handleSeed}
             disabled={loading}
-            className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold py-6 mb-6"
+            className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold py-4 rounded-lg mb-6 disabled:opacity-50 transition-all cursor-pointer"
           >
             {loading ? "🔄 Seeding..." : "🚀 Add Products to Database"}
-          </Button>
+          </button>
 
           {result && (
             <div className="bg-green-900/20 border border-green-700 rounded p-4 mb-4">

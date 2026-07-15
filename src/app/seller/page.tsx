@@ -3,98 +3,122 @@
 import { useState, useEffect } from "react";
 import {
   Package,
-  Eye,
+  CheckCircle,
   ShoppingCart,
   TrendingUp,
   ArrowUpRight,
   ArrowDownRight,
+  Minus,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { calculateSellerKPIs, SellerArtifact } from "@/lib/aggregators";
 
-// Mock data for demonstration
-const stats = [
-  {
-    label: "Total Products Listed",
-    value: "12",
-    change: "+2",
-    trend: "up" as const,
-    icon: Package,
-  },
-  {
-    label: "Total Views",
-    value: "1,245",
-    change: "+18%",
-    trend: "up" as const,
-    icon: Eye,
-  },
-  {
-    label: "Total Sales",
-    value: "$45,200",
-    change: "+5.2%",
-    trend: "up" as const,
-    icon: ShoppingCart,
-  },
-  {
-    label: "Avg. Price",
-    value: "$3,767",
-    change: "+12%",
-    trend: "up" as const,
-    icon: TrendingUp,
-  },
-];
-
-const recentProducts = [
-  {
-    id: 1,
-    name: "Vintage Pocket Watch",
-    category: "timepiece",
-    price: "$2,500",
-    image: "🕰️",
-    status: "Available",
-    views: 234,
-    date: "2 days ago",
-  },
-  {
-    id: 2,
-    name: "Medieval Manuscript",
-    category: "manuscript",
-    price: "$5,800",
-    image: "📜",
-    status: "Available",
-    views: 156,
-    date: "5 days ago",
-  },
-  {
-    id: 3,
-    name: "Roman Gold Coin",
-    category: "numismatic",
-    price: "$1,200",
-    image: "🪙",
-    status: "Sold",
-    views: 412,
-    date: "1 week ago",
-  },
-  {
-    id: 4,
-    name: "Persian Carpet",
-    category: "textile",
-    price: "$3,400",
-    image: "🧵",
-    status: "Available",
-    views: 189,
-    date: "10 days ago",
-  },
-];
+const categoryLabels: Record<string, string> = {
+  painting: "Painting",
+  sculpture: "Sculpture",
+  manuscript: "Manuscript",
+  jewelry: "Jewelry",
+  antiquity: "Antiquity",
+  decorative_art: "Decorative Art",
+  timepiece: "Timepiece",
+  textile: "Textile",
+  weapon: "Weapon",
+  numismatic: "Numismatic",
+  other: "Other",
+  arms_and_armor: "Arms & Armor",
+  objets_d_art: "Objets d'Art"
+};
 
 export default function SellerDashboard() {
   const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<SellerArtifact[]>([]);
 
   useEffect(() => {
     setMounted(true);
+    async function fetchData() {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data, error } = await supabase
+            .from("artifacts")
+            .select("*, auctions(id), auction_applications(id, status)")
+            .eq("seller_id", user.id)
+            .in("status", ["available", "reserved", "sold", "pending_auction_approval", "on_auction"])
+            .order("created_at", { ascending: false });
+          if (error) throw error;
+          
+          const directSalesOnly = (data || []).filter((p: any) => {
+            const hasAuction = p.auctions && p.auctions.length > 0;
+            const hasActiveApp = p.auction_applications && p.auction_applications.some(
+              (app: any) => ["pending", "approved", "under_review"].includes(app.status)
+            );
+            return !hasAuction && !hasActiveApp;
+          });
+          setProducts(directSalesOnly);
+        } else {
+          setProducts([]);
+        }
+      } catch (err) {
+        console.error("Error fetching products for dashboard:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
   }, []);
 
   if (!mounted) {
     return null;
   }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-pandora-charcoal"></div>
+          <p className="mt-4 text-gray-500">Loading Dashboard Data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Calculate dynamic statistics and trends via lib aggregators helper
+  const kpis = calculateSellerKPIs(products);
+
+  const stats = [
+    {
+      label: "Total Products Listed",
+      value: kpis.totalListed.toString(),
+      change: kpis.listedChangeText,
+      trend: kpis.listedTrend,
+      icon: Package,
+    },
+    {
+      label: "Completed Sales",
+      value: kpis.completedSales.toString(),
+      change: kpis.soldChangeText,
+      trend: kpis.soldTrend,
+      icon: CheckCircle,
+    },
+    {
+      label: "Total Sales",
+      value: `$${kpis.totalSalesVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      change: kpis.salesChangeText,
+      trend: kpis.salesTrend,
+      icon: ShoppingCart,
+    },
+    {
+      label: "Avg. Price",
+      value: `$${Math.round(kpis.avgPrice).toLocaleString()}`,
+      change: kpis.avgPriceChangeText,
+      trend: kpis.avgPriceTrend,
+      icon: TrendingUp,
+    },
+  ];
+
+  const recentProducts = products.slice(0, 4);
 
   return (
     <div className="space-y-8">
@@ -112,7 +136,18 @@ export default function SellerDashboard() {
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, idx) => {
           const Icon = stat.icon;
-          const TrendIcon = stat.trend === "up" ? ArrowUpRight : ArrowDownRight;
+          const TrendIcon = stat.trend === "up" 
+            ? ArrowUpRight 
+            : stat.trend === "down" 
+              ? ArrowDownRight 
+              : Minus;
+          
+          const trendColor = stat.trend === "up"
+            ? "text-green-600"
+            : stat.trend === "down"
+              ? "text-red-600"
+              : "text-gray-400";
+
           return (
             <div
               key={idx}
@@ -124,7 +159,7 @@ export default function SellerDashboard() {
                     {stat.label}
                   </p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {stat.value}
+                     {stat.value}
                   </p>
                 </div>
                 <div className="rounded-lg bg-gray-100 p-3">
@@ -132,20 +167,8 @@ export default function SellerDashboard() {
                 </div>
               </div>
               <div className="mt-4 flex items-center gap-2">
-                <TrendIcon
-                  className={`h-4 w-4 ${
-                    stat.trend === "up"
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                />
-                <span
-                  className={`text-sm font-medium ${
-                    stat.trend === "up"
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
+                <TrendIcon className={`h-4 w-4 ${trendColor}`} />
+                <span className={`text-sm font-medium ${trendColor}`}>
                   {stat.change}
                 </span>
               </div>
@@ -162,91 +185,112 @@ export default function SellerDashboard() {
           </h3>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                  Product
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                  Category
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                  Price
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                  Views
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
-                  Listed
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {recentProducts.map((product) => (
-                <tr
-                  key={product.id}
-                  className="hover:bg-gray-50 transition-colors"
-                >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-lg">
-                        {product.image}
-                      </div>
-                      <span className="font-medium text-gray-900">
-                        {product.name}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-gray-600 capitalize">
-                      {product.category}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="font-semibold text-gray-900">
-                      {product.price}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-gray-600">
-                      {product.views}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
-                        product.status === "Available"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-100 text-gray-700"
-                      }`}
+        {products.length === 0 ? (
+          <div className="text-center py-16 px-6 bg-white rounded-lg border border-gray-200">
+            <span className="text-4xl mb-4 inline-block">📦</span>
+            <h4 className="text-base font-semibold text-gray-900">No Products Listed</h4>
+            <p className="text-sm text-gray-500 mt-2 max-w-sm mx-auto leading-relaxed">
+              You haven't listed any artifacts for sale yet. Add your first heritage item to start tracking views, sales, and curation statuses.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                      Product
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                      Category
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                      Price
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wide">
+                      Listed
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {recentProducts.map((product) => (
+                    <tr
+                      key={product.id}
+                      className="hover:bg-gray-50 transition-colors"
                     >
-                      {product.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-gray-600">
-                      {product.date}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {product.thumbnail_url ? (
+                            <img
+                              src={product.thumbnail_url}
+                              alt={product.title}
+                              className="h-10 w-10 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-100 text-lg">
+                              📦
+                            </div>
+                          )}
+                          <span className="font-medium text-gray-900">
+                            {product.title}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-600 capitalize">
+                          {categoryLabels[product.category] || product.category}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="font-semibold text-gray-900">
+                          {product.currency} {product.estimated_value?.toLocaleString() || "—"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${product.status === "available"
+                              ? "bg-green-100 text-green-700"
+                              : product.status === "pending_auction_approval"
+                                ? "bg-amber-100 text-amber-800"
+                                : product.status === "on_auction"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : product.status === "sold"
+                                    ? "bg-gray-100 text-gray-700"
+                                    : "bg-gray-100 text-gray-700"
+                            }`}
+                        >
+                          {product.status === "pending_auction_approval"
+                            ? "Waiting For Approval"
+                            : product.status === "on_auction"
+                              ? "On Auction"
+                              : product.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm text-gray-600">
+                          {product.created_at ? new Date(product.created_at).toLocaleDateString() : "—"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-        <div className="border-t border-gray-200 px-6 py-4">
-          <a
-            href="/seller/products"
-            className="text-sm font-medium text-pandora-charcoal hover:text-pandora-charcoal/80 transition-colors"
-          >
-            View All Products →
-          </a>
-        </div>
+            <div className="border-t border-gray-200 px-6 py-4">
+              <a
+                href="/seller/products"
+                className="text-sm font-medium text-pandora-charcoal hover:text-pandora-charcoal/80 transition-colors"
+              >
+                View All Products →
+              </a>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { fetchHomepageStats, HomepageStats } from "@/lib/aggregators";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useScroll, useTransform } from "motion/react";
@@ -65,7 +68,7 @@ function HeroSection() {
       >
         <Image
           src="/hero.png"
-          alt="Rare artifacts from the PANDORA collection"
+          alt="Rare artifacts from the Dynasity-Voult collection"
           fill
           priority
           className="editorial-image"
@@ -267,28 +270,27 @@ function EditorialGallery() {
    SECTION 3 — FEATURED COLLECTION
    ════════════════════════════════════════════ */
 
-const featuredArtifacts = [
-  {
-    title: "Byzantine Gold Pectoral Cross",
-    origin: "Constantinople, 6th Century",
-    estimate: "$480,000 — $620,000",
-    image: "/editorial-2.png",
-  },
-  {
-    title: "Ming Dynasty Jade Dragon",
-    origin: "China, 15th Century",
-    estimate: "$1,200,000 — $1,800,000",
-    image: "/editorial-1.png",
-  },
-  {
-    title: "Book of Hours, Flemish",
-    origin: "Bruges, c. 1480",
-    estimate: "$320,000 — $450,000",
-    image: "/editorial-3.png",
-  },
-];
+function FeaturedCollection({ items }: { items: any[] }) {
+  if (items.length === 0) {
+    return (
+      <section id="featured" className="bg-pandora-cream py-32">
+        <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
+          <FadeIn>
+            <div className="text-center py-20 px-6 border border-pandora-gold/10 bg-white/50 backdrop-blur-sm rounded-xl">
+              <span className="text-4xl mb-4">🏛️</span>
+              <h3 className="font-serif text-2xl font-medium text-pandora-charcoal tracking-wide">
+                Archive Curation in Progress
+              </h3>
+              <p className="text-sm text-pandora-gray mt-3 max-w-md mx-auto leading-relaxed">
+                Our digital heritage vault is currently undergoing private curation. All previously listed items have been acquired. Please check back soon or view our live auctions.
+              </p>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+    );
+  }
 
-function FeaturedCollection() {
   return (
     <section id="featured" className="bg-pandora-cream py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
@@ -316,41 +318,43 @@ function FeaturedCollection() {
         </FadeIn>
 
         <div className="mt-16 grid gap-8 md:grid-cols-3">
-          {featuredArtifacts.map((artifact, index) => (
-            <FadeIn key={index} delay={index * 0.15}>
-              <Link href="/collection" className="group block">
-                <div className="relative aspect-[3/4] overflow-hidden bg-pandora-ivory">
-                  <Image
-                    src={artifact.image}
-                    alt={artifact.title}
-                    fill
-                    className="editorial-image transition-transform duration-700 group-hover:scale-105"
-                    sizes="(max-width: 768px) 100vw, 33vw"
-                  />
-                </div>
-                <div className="mt-6">
-                  <h3 className="font-serif text-xl font-medium text-pandora-charcoal transition-colors group-hover:text-pandora-gold">
-                    {artifact.title}
-                  </h3>
-                  <p className="mt-1 text-[13px] text-pandora-gray">
-                    {artifact.origin}
-                  </p>
-                  <p className="mt-3 text-[13px] font-medium tracking-wide text-pandora-charcoal">
-                    Estimated {artifact.estimate}
-                  </p>
-                </div>
-              </Link>
-            </FadeIn>
-          ))}
+          {items.map((artifact, index) => {
+            const image = artifact.thumbnail_url || (artifact.images && artifact.images[0]) || "/editorial-1.png";
+            const estimate = artifact.estimated_value ? `$${artifact.estimated_value.toLocaleString()}` : "Estimate on Request";
+            return (
+              <FadeIn key={artifact.id || index} delay={index * 0.15}>
+                <Link href={`/buy/${artifact.slug || artifact.id}`} className="group block">
+                  <div className="relative aspect-[3/4] overflow-hidden bg-pandora-ivory">
+                    <Image
+                      src={image}
+                      alt={artifact.title}
+                      fill
+                      className="editorial-image transition-transform duration-700 group-hover:scale-105"
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                    />
+                  </div>
+                  <div className="mt-6">
+                    <h3 className="font-serif text-xl font-medium text-pandora-charcoal transition-colors group-hover:text-pandora-gold">
+                      {artifact.title}
+                    </h3>
+                    <p className="mt-1 text-[13px] text-pandora-gray">
+                      {artifact.origin || "Origin Unknown"}
+                    </p>
+                    <p className="mt-3 text-[13px] font-medium tracking-wide text-pandora-charcoal">
+                      Estimated {estimate}
+                    </p>
+                  </div>
+                </Link>
+              </FadeIn>
+            );
+          })}
         </div>
       </div>
     </section>
   );
 }
 
-/* ════════════════════════════════════════════
-   SECTION 4 — THE HOUSE OF PANDORA
-   ════════════════════════════════════════════ */
+/* ─── SECTION 4 — THE HOUSE OF DYNASITY-VOULT ─── */
 
 function BrandStory() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -377,7 +381,7 @@ function BrandStory() {
             >
               <Image
                 src="/editorial-4.png"
-                alt="The House of PANDORA"
+                alt="The House of Dynasity-Voult"
                 fill
                 className="editorial-image"
                 sizes="(max-width: 768px) 100vw, 50vw"
@@ -393,12 +397,12 @@ function BrandStory() {
             <h2 className="mt-4 font-serif text-4xl font-medium leading-tight text-pandora-charcoal md:text-5xl">
               The House of
               <br />
-              <span className="italic">Pandora</span>
+              <span className="italic">Dynasity-Voult</span>
             </h2>
             <div className="mt-8 space-y-6 text-[15px] leading-relaxed text-pandora-gray">
               <p>
                 Founded on the conviction that extraordinary objects deserve
-                extraordinary stewardship, PANDORA operates at the intersection
+                extraordinary stewardship, Dynasity-Voult operates at the intersection
                 of a museum, a premium marketplace, and a high-end auction
                 house.
               </p>
@@ -432,48 +436,73 @@ function BrandStory() {
 }
 
 /* ════════════════════════════════════════════
-   SECTION 5 — AUCTION PREVIEW
+   SECTION 5 — LIVE AUCTION PREVIEW
    ════════════════════════════════════════════ */
 
-function AuctionPreview() {
+function AuctionPreview({ liveAuctions }: { liveAuctions: any[] }) {
+  const liveCount = liveAuctions.filter((a) => a.status === "live").length;
+  const upcomingCount = liveAuctions.filter((a) => a.status === "upcoming").length;
+  const hasAuctions = liveAuctions.length > 0;
+
   return (
     <section id="auctions" className="bg-pandora-charcoal py-32 text-white">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
         <FadeIn>
           <div className="text-center">
             <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-pandora-gold-light">
-              Upcoming
+              {hasAuctions ? (liveCount > 0 ? "Now Live" : "Upcoming") : "Coming Soon"}
             </p>
             <h2 className="mt-4 font-serif text-4xl font-medium md:text-5xl">
-              The Spring Sale
+              {hasAuctions
+                ? liveCount > 0
+                  ? "Auctions Live Now"
+                  : "Upcoming Auction Events"
+                : "The Collection Awaits"}
             </h2>
             <p className="mx-auto mt-6 max-w-lg text-[15px] leading-relaxed text-white/60">
-              A private evening of exceptional lots — ancient gold, rare
-              manuscripts, and decorative arts from distinguished private
-              collections.
+              {hasAuctions
+                ? liveCount > 0
+                  ? "Active bidding is open on our current live catalog. Participate in real-time from anywhere in the world."
+                  : "Our curators are preparing the next collection of premium acquisitions for live auction."
+                : "A private evening of exceptional lots — ancient gold, rare manuscripts, and decorative arts from distinguished private collections."}
             </p>
           </div>
         </FadeIn>
 
-        <FadeIn delay={0.2}>
-          <div className="mt-16 flex flex-wrap items-center justify-center gap-12 md:gap-20">
-            {[
-              { value: "47", label: "Lots" },
-              { value: "12", label: "Countries" },
-              { value: "$24M", label: "Est. Total" },
-              { value: "Mar 28", label: "Live Date" },
-            ].map((stat, index) => (
-              <div key={index} className="text-center">
-                <p className="font-serif text-4xl font-medium text-pandora-gold-light md:text-5xl">
-                  {stat.value}
-                </p>
-                <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-white/40">
-                  {stat.label}
-                </p>
-              </div>
-            ))}
-          </div>
-        </FadeIn>
+        {hasAuctions && (
+          <FadeIn delay={0.2}>
+            <div className="mt-16 flex flex-wrap items-center justify-center gap-12 md:gap-20">
+              {[
+                { value: String(liveAuctions.length), label: "Total Lots" },
+                { value: String(liveCount), label: "Live Now" },
+                { value: String(upcomingCount), label: "Scheduled" },
+                {
+                  value: liveAuctions
+                    .reduce(
+                      (acc, a) => acc + (a.artifacts?.estimated_value || 0),
+                      0
+                    )
+                    .toLocaleString("en-US", {
+                      style: "currency",
+                      currency: "USD",
+                      notation: "compact",
+                      maximumFractionDigits: 1,
+                    }),
+                  label: "Est. Total",
+                },
+              ].map((stat, index) => (
+                <div key={index} className="text-center">
+                  <p className="font-serif text-4xl font-medium text-pandora-gold-light md:text-5xl">
+                    {stat.value}
+                  </p>
+                  <p className="mt-2 text-[11px] uppercase tracking-[0.2em] text-white/40">
+                    {stat.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        )}
 
         <FadeIn delay={0.3}>
           <div className="mt-16 text-center">
@@ -482,7 +511,7 @@ function AuctionPreview() {
               className="group inline-flex items-center gap-3 border border-white/20 px-10 py-4 text-[12px] font-semibold uppercase tracking-[0.15em] text-white transition-all hover:border-pandora-gold-light hover:text-pandora-gold-light"
             >
               <Clock size={14} strokeWidth={1.5} />
-              Register for Auction
+              {hasAuctions ? "View All Auctions" : "Register for Notifications"}
               <ArrowRight
                 size={14}
                 className="transition-transform group-hover:translate-x-1"
@@ -520,7 +549,14 @@ const trustPoints = [
   },
 ];
 
-function HeritageSection() {
+function HeritageSection({ stats }: { stats: HomepageStats }) {
+  const statItems = [
+    { value: stats.artifactsCount > 0 ? `${stats.artifactsCount.toLocaleString()}+` : "0", label: "Artifacts Listed" },
+    { value: stats.collectionsCount > 0 ? `${stats.collectionsCount.toLocaleString()}` : "0", label: "Private Collections Served" },
+    { value: stats.countriesCount > 0 ? `${stats.countriesCount.toLocaleString()}` : "0", label: "Origins Represented" },
+    { value: stats.activeAuctionsCount > 0 ? `${stats.activeAuctionsCount.toLocaleString()}` : "0", label: "Active Live Auctions" },
+  ];
+
   return (
     <section id="heritage" className="bg-pandora-ivory py-32">
       <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
@@ -564,12 +600,7 @@ function HeritageSection() {
         {/* Stats bar */}
         <FadeIn delay={0.3}>
           <div className="mt-24 flex flex-wrap items-center justify-center gap-16 border-y border-pandora-cream py-12 md:gap-24">
-            {[
-              { value: "2,400+", label: "Authenticated Artifacts" },
-              { value: "147", label: "Private Collections Served" },
-              { value: "32", label: "Countries Represented" },
-              { value: "98.7%", label: "Authentication Accuracy" },
-            ].map((stat, index) => (
+            {statItems.map((stat, index) => (
               <div key={index} className="text-center">
                 <p className="font-serif text-3xl font-medium text-pandora-charcoal">
                   {stat.value}
@@ -591,14 +622,79 @@ function HeritageSection() {
    ════════════════════════════════════════════ */
 
 export default function Home() {
+  const [featuredLots, setFeaturedLots] = useState<any[]>([]);
+  const [liveAuctions, setLiveAuctions] = useState<any[]>([]);
+  const [stats, setStats] = useState<HomepageStats>({
+    artifactsCount: 0,
+    collectionsCount: 0,
+    countriesCount: 0,
+    activeAuctionsCount: 0,
+  });
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    async function fetchData() {
+      const { data: rawArtifacts } = await supabase
+        .from("artifacts")
+        .select("*, auctions(id), auction_applications(id, status), favorites(id)")
+        .not("buy_now_price", "is", null)
+        .not("seller_id", "is", null)
+        .eq("status", "available");
+
+      let featuredData: any[] = [];
+      if (rawArtifacts) {
+        // Exclude auction products & active applications
+        const collectionProducts = rawArtifacts.filter((item: any) => {
+          const hasAuc = item.auctions && item.auctions.length > 0;
+          const hasActiveApp = item.auction_applications && item.auction_applications.some(
+            (app: any) => ["pending", "approved", "under_review"].includes(app.status)
+          );
+          return !hasAuc && !hasActiveApp;
+        });
+
+        // Dynamic sorting: Favorites count descending, fallback to created_at descending (newest)
+        collectionProducts.sort((a: any, b: any) => {
+          const favsA = a.favorites ? a.favorites.length : 0;
+          const favsB = b.favorites ? b.favorites.length : 0;
+          if (favsB !== favsA) {
+            return favsB - favsA;
+          }
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+
+        featuredData = collectionProducts.slice(0, 3);
+      }
+
+      setFeaturedLots(featuredData);
+
+      // 2. Fetch live and upcoming auctions with artifact details
+      const { data: auctionsData } = await supabase
+        .from("auctions")
+        .select("*, artifacts(id, title, estimated_value)")
+        .in("status", ["live", "upcoming"])
+        .order("start_time", { ascending: true });
+
+      if (auctionsData) {
+        setLiveAuctions(auctionsData);
+      }
+
+      // 3. Fetch live statistics using concurrent helper
+      const homeStats = await fetchHomepageStats(supabase);
+      setStats(homeStats);
+    }
+
+    fetchData();
+  }, []);
+
   return (
     <>
       <HeroSection />
       <EditorialGallery />
-      <FeaturedCollection />
+      <FeaturedCollection items={featuredLots} />
       <BrandStory />
-      <AuctionPreview />
-      <HeritageSection />
+      <AuctionPreview liveAuctions={liveAuctions} />
+      <HeritageSection stats={stats} />
     </>
   );
 }

@@ -1,175 +1,194 @@
-"use client";
+import { notFound, redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import PublicAuctionDetailClient from "./PublicAuctionDetailClient";
 
-import { notFound } from "next/navigation";
-import Image from "next/image";
-import Link from "next/link";
-import { ArrowLeft, Clock, Eye, Shield, Award } from "lucide-react";
-import { auctionItems } from "@/lib/auction-data";
+export const dynamic = "force-dynamic";
 
-export default async function AuctionDetailPage({
-  params,
-}: {
+interface PageProps {
   params: Promise<{ slug: string }>;
-}) {
-  const resolvedParams = await params;
-  const artifact = auctionItems.find((i: any) => i.slug === resolvedParams.slug);
+}
 
-  if (!artifact) {
-    notFound();
+export default async function AuctionDetailPage({ params }: PageProps) {
+  const resolvedParams = await params;
+  const slug = resolvedParams.slug;
+  if (!slug) return notFound();
+
+  const supabase = await createClient();
+
+  // 1. Run on-demand activation & settlement triggers dynamically
+  try {
+    await supabase.rpc("activate_scheduled_auctions");
+    await supabase.rpc("settle_expired_auctions");
+  } catch (rpcErr) {
+    console.error("RPC activation/settlement triggers failed:", rpcErr);
   }
 
+  // 2. Query dynamic lot parameters joining artifact_media and documents
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
+  let auction: any = null;
+
+  if (isUuid) {
+    const { data } = await supabase
+      .from("auctions")
+      .select(`
+        *,
+        artifacts (
+          *,
+          artifact_media (*),
+          artifact_documents (*)
+        ),
+        orders:orders(id, status, seller_earnings(id, payouts(id, status)))
+      `)
+      .eq("id", slug)
+      .maybeSingle();
+    auction = data;
+  }
+
+  if (!auction) {
+    const { data } = await supabase
+      .from("auctions")
+      .select(`
+        *,
+        artifacts!inner (
+          *,
+          artifact_media (*),
+          artifact_documents (*)
+        ),
+        orders:orders(id, status, seller_earnings(id, payouts(id, status)))
+      `)
+      .eq("artifacts.slug", slug)
+      .maybeSingle();
+    auction = data;
+  }
+
+  // 3. Security Verification: Reject unpublished, pending approval, or cancelled auctions
+  if (!auction || !auction.artifacts) {
+    return notFound();
+  }
+
+  if (auction.status === "cancelled") {
+    return notFound();
+  }
+
+  // Pending approval, draft, or rejected auctions are strictly hidden from the public
+  if (
+    auction.artifacts.status === "pending_auction_approval" || 
+    auction.artifacts.status === "rejected"
+  ) {
+    return notFound();
+  }
+
+  // 4. Fetch user authentication session and verify watchlist (favorites) status
+  const { data: { user } } = await supabase.auth.getUser();
+  let initialWatched = false;
+
+  if (user) {
+    const { data: fav } = await supabase
+      .from("favorites")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("artifact_id", auction.artifacts.id)
+      .maybeSingle();
+    initialWatched = !!fav;
+  }
+
+  // 5. Fetch chronological bids log
+  const { data: bidsData } = await supabase
+    .from("bids")
+    .select(`
+      id,
+      amount,
+      created_at,
+      profiles:user_id (
+        display_name
+      )
+    `)
+    .eq("auction_id", auction.id)
+    .order("created_at", { ascending: false });
+
+  const bids = (bidsData || []).map((b: any) => {
+    const profile = Array.isArray(b.profiles) ? b.profiles[0] : b.profiles;
+    return {
+      id: b.id,
+      amount: Number(b.amount),
+      user_id: b.user_id,
+      created_at: b.created_at,
+      profiles: {
+        display_name: profile?.display_name || "Collector"
+      }
+    };
+  });
+
+  // 6. Query related active/live lots in similar category/era/origin
+  const currentCategory = auction.artifacts.category;
+  const currentEra = auction.artifacts.era;
+  const currentOrigin = auction.artifacts.origin;
+
+  const { data: relatedData } = await supabase
+    .from("auctions")
+    .select(`
+      id,
+      title,
+      status,
+      starting_bid,
+      current_bid,
+      end_time,
+      artifacts!inner (
+        id,
+        title,
+        thumbnail_url,
+        category,
+        origin,
+        era,
+        slug
+      )
+    `)
+    .eq("status", "live")
+    .neq("id", auction.id)
+    .or(`category.eq.${currentCategory},origin.eq.${currentOrigin}`, { foreignTable: "artifacts" })
+    .limit(4);
+
+  let relatedAuctions = relatedData || [];
+
+  // Fallback to load any active public lot if similar matches are fewer than 4
+  if (relatedAuctions.length < 4) {
+    const excludeIds = [auction.id, ...relatedAuctions.map((r) => r.id)];
+    const { data: fallbackRelated } = await supabase
+      .from("auctions")
+      .select(`
+        id,
+        title,
+        status,
+        starting_bid,
+        current_bid,
+        end_time,
+        artifacts!inner (
+          id,
+          title,
+          thumbnail_url,
+          category,
+          origin,
+          era,
+          slug
+        )
+      `)
+      .eq("status", "live")
+      .not("id", "in", `(${excludeIds.join(",")})`)
+      .limit(4 - relatedAuctions.length);
+
+    if (fallbackRelated) {
+      relatedAuctions = [...relatedAuctions, ...fallbackRelated];
+    }
+  }
+
+  // 7. Render dynamic wrapper client component
   return (
-    <div
-      className="min-h-screen flex flex-col items-center"
-      style={{
-        backgroundColor: "black",
-        color: "white",
-        fontFamily: "'Segoe UI', sans-serif",
-      }}
-    >
-      {/* Logo Header */}
-      <header
-        className="w-full flex items-center justify-center py-4"
-        style={{ backgroundColor: "black" }}
-      >
-        {/* <Image
-          src="/pandora.png"
-          alt="Pandora's Box Logo"
-          width={100}
-          height={120}
-          className="object-cover"
-        /> */}
-      </header>
-
-      {/* First Video */}
-      {artifact.videos[0] && (
-        <section className="w-full" style={{ margin: "0", marginTop: "-10px" }}>
-          <video
-            autoPlay
-            muted
-            className="w-full"
-            style={{ borderRadius: "9px" }}
-          >
-            <source src={artifact.videos[0]} type="video/mp4" />
-          </video>
-        </section>
-      )}
-
-      {/* Product Info */}
-      <section
-        className="text-center"
-        style={{
-          width: "90%",
-          maxWidth: "800px",
-          margin: "1rem",
-        }}
-      >
-        <h2 className="text-3xl font-serif mb-6">{artifact.title}</h2>
-        <p
-          className="text-base leading-relaxed"
-          style={{ color: "white", fontFamily: "'Segoe UI'" }}
-        >
-          {artifact.description}
-        </p>
-      </section>
-
-      {/* Second Video or Image Gallery */}
-      {artifact.videos[1] ? (
-        <section className="w-full" style={{ margin: "50px 0" }}>
-          <video
-            loop
-            autoPlay
-            muted
-            className="w-full"
-            style={{ borderRadius: "9px" }}
-          >
-            <source src={artifact.videos[1]} type="video/mp4" />
-          </video>
-        </section>
-      ) : artifact.images.length > 0 ? (
-        <section
-          className="flex justify-center flex-wrap"
-          style={{ gap: "4rem", margin: "3rem 0", maxWidth: "1000px" }}
-        >
-          <div className="mt-4 grid grid-cols-2 gap-4">
-            {artifact.images.map((img: any, idx: number) => (
-              <div key={idx} className="relative aspect-square">
-                <Image
-                  src={img}
-                  alt={`${artifact.title} ${idx + 1}`}
-                  fill
-                  className="object-cover rounded-lg"
-                />
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {/* Story Section */}
-      <section
-        className="text-center"
-        style={{
-          padding: "2rem",
-          backgroundColor: "black",
-          borderRadius: "8px",
-          margin: "10px",
-        }}
-      >
-        <h2 className="text-3xl font-serif font-bold mb-4">
-          Legend of the Treasure
-        </h2>
-        <p
-          style={{
-            fontSize: "1.1rem",
-            color: "white",
-            maxWidth: "800px",
-            margin: "0 auto",
-            lineHeight: "1.6",
-            fontFamily: "'Segoe UI'",
-            marginBottom: "80px",
-            marginTop: "30px",
-          }}
-        >
-          {artifact.story}
-        </p>
-        <h2 className="text-2xl font-serif">
-          Bid starts from - {artifact.startingBid}
-        </h2>
-      </section>
-
-      {/* Bid Now Button */}
-      <div className="text-center my-8">
-        <Link
-          href={`/auctions/${artifact.slug}/bid`}
-          className="inline-block px-6 py-3 text-lg text-white rounded-md transition-colors"
-          style={{
-            backgroundColor: "#007BFF",
-            textDecoration: "none",
-            fontSize: "18px",
-          }}
-          onMouseOver={(e) =>
-            (e.currentTarget.style.backgroundColor = "#0056b3")
-          }
-          onMouseOut={(e) =>
-            (e.currentTarget.style.backgroundColor = "#007BFF")
-          }
-        >
-          Bid Now!
-        </Link>
-      </div>
-
-      {/* Footer */}
-      <footer
-        className="w-full text-center py-4 mt-20"
-        style={{
-          backgroundColor: "black",
-          color: "white",
-          fontFamily: "'Segoe UI'",
-        }}
-      >
-        <p>© 2025 Pandora&apos;s Box. All rights reserved.</p>
-      </footer>
-    </div>
+    <PublicAuctionDetailClient
+      initialAuction={auction}
+      initialBids={bids}
+      relatedAuctions={relatedAuctions}
+      initialWatched={initialWatched}
+      userId={user?.id || null}
+    />
   );
 }

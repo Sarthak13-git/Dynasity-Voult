@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* ─── PANDORA Design System ─── */
+/* ─── Dynasity-Voult Design System ─── */
 
 @theme inline {
   --color-background: var(--background);
@@ -32,7 +32,7 @@
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
 
-  /* PANDORA custom tokens */
+  /* Dynasity-Voult custom tokens */
   --color-pandora-gold: #B8860B;
   --color-pandora-gold-light: #D4AF37;
   --color-pandora-ivory: #FDFBF7;
@@ -113,7 +113,7 @@
   }
 }
 
-/* ─── PANDORA Utility Classes ─── */
+/* ─── Dynasity-Voult Utility Classes ─── */
 
 @layer utilities {
   .font-serif {

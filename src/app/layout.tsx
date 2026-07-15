@@ -22,7 +22,7 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "PANDORA | Digital Heritage House",
+  title: "Dynasity-Voult | Digital Heritage House",
   description:
     "A premier digital heritage house dedicated to the curation, documentation, exhibition, and transaction of rare, ancient, and historically significant artifacts.",
   keywords: [
@@ -33,17 +33,17 @@ export const metadata: Metadata = {
     "fine art",
     "premium collection",
     "provenance",
-    "PANDORA",
+    "Dynasity-Voult",
   ],
   openGraph: {
-    title: "PANDORA | Digital Heritage House",
+    title: "Dynasity-Voult | Digital Heritage House",
     description:
       "Discover rare, ancient, and historically significant artifacts. Premium auctions, exhibitions, and curated collections.",
     type: "website",
   },
   icons: {
-    icon: "/pandora.png",
-    apple: "/pandora.png",
+    icon: "/logo.png",
+    apple: "/logo.png",
   },
 };
 
@@ -53,9 +53,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} antialiased`}
+        suppressHydrationWarning
       >
         <LenisProvider>
           <LayoutWrapper>

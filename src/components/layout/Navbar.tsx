@@ -15,7 +15,6 @@ const navLinks = [
   { href: "/collection", label: "Collection" },
   { href: "/buy", label: "Buy" },
   { href: "/auctions", label: "Auctions" },
-  { href: "/exhibitions", label: "Exhibitions" },
   { href: "/about", label: "About" },
 ];
 
@@ -24,6 +23,7 @@ export default function Navbar() {
   const [isHovered, setIsHovered] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const pathname = usePathname();
   const count = useCartStore((s) => s.totalItems());
   const openCart = useCartStore((s) => s.openCart);
@@ -31,15 +31,36 @@ export default function Navbar() {
   const supabase = createClient();
 
   useEffect(() => {
+    const fetchProfile = async (uid: string) => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", uid)
+        .single();
+      if (data) {
+        setRole(data.role);
+      }
+    };
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+      } else {
+        setRole(null);
+      }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+      } else {
+        setRole(null);
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase.auth]);
+  }, [supabase]);
 
   const handleScroll = useCallback(() => {
     setIsScrolled(window.scrollY > 80);
@@ -97,18 +118,20 @@ export default function Navbar() {
               </span>
             </button>
 
-            <button
-              className={cn(
-                "flex items-center gap-1.5 transition-colors duration-500 cursor-pointer",
-                isActive ? "text-pandora-charcoal" : "text-white"
-              )}
-              aria-label="Search"
-            >
-              <Search size={22} strokeWidth={1} />
-              <span className="hidden text-[13px] font-normal tracking-[0.02em] sm:inline">
-                Search
-              </span>
-            </button>
+            {pathname !== "/" && (
+              <button
+                className={cn(
+                  "flex items-center gap-1.5 transition-colors duration-500 cursor-pointer",
+                  isActive ? "text-pandora-charcoal" : "text-white"
+                )}
+                aria-label="Search"
+              >
+                <Search size={22} strokeWidth={1} />
+                <span className="hidden text-[13px] font-normal tracking-[0.02em] sm:inline">
+                  Search
+                </span>
+              </button>
+            )}
           </div>
 
           <Link
@@ -121,34 +144,26 @@ export default function Navbar() {
                 isActive ? "text-pandora-charcoal" : "text-white"
               )}
             >
-              PANDORA
+              DYNASITY-VOULT
             </span>
           </Link>
 
           <div className="flex items-center gap-6 min-w-[140px] justify-end">
-            <Link
-              href="/seller"
-              className={cn(
-                "hidden text-[13px] font-medium uppercase tracking-[0.1em] transition-colors duration-500 md:block",
-                isActive
-                  ? "text-pandora-gold hover:text-pandora-gold-light"
-                  : "text-white/80 hover:text-white"
-              )}
-            >
-              Seller
-            </Link>
+            {user && role !== "admin" && (
+              <Link
+                href={role === "seller" ? "/seller" : "/seller-hub"}
+                className={cn(
+                  "hidden text-[13px] font-medium uppercase tracking-[0.1em] transition-colors duration-500 md:block",
+                  isActive
+                    ? "text-pandora-gold hover:text-pandora-gold-light"
+                    : "text-white/80 hover:text-white"
+                )}
+              >
+                Seller
+              </Link>
+            )}
 
-            <Link
-              href="/contact"
-              className={cn(
-                "hidden text-[13px] font-normal tracking-[0.02em] transition-colors duration-500 sm:inline",
-                isActive
-                  ? "text-pandora-charcoal hover:text-black"
-                  : "text-white hover:text-white/80"
-              )}
-            >
-              Call Us
-            </Link>
+
 
             <button
               onClick={openCart}
@@ -169,44 +184,30 @@ export default function Navbar() {
             </button>
 
             {user ? (
-               <div className="flex items-center gap-4">
-                 <Link
-                   href="/profile"
-                   aria-label="Profile"
-                   className={cn(
-                     "transition-colors duration-500",
-                     isActive
-                       ? "text-pandora-charcoal hover:text-black"
-                       : "text-white hover:text-white/80"
-                   )}
-                 >
-                   <UserIcon size={20} strokeWidth={1} />
-                 </Link>
-                 <button
-                   onClick={() => supabase.auth.signOut()}
-                   aria-label="Sign out"
-                   className={cn(
-                     "transition-colors duration-500",
-                     isActive
-                       ? "text-pandora-charcoal hover:text-black"
-                       : "text-white hover:text-white/80"
-                   )}
-                 >
-                   <LogOut size={20} strokeWidth={1} />
-                 </button>
-               </div>
+               <Link
+                 href="/profile"
+                 aria-label="Profile"
+                 className={cn(
+                   "transition-colors duration-500",
+                   isActive
+                     ? "text-pandora-charcoal hover:text-black"
+                     : "text-white hover:text-white/80"
+                 )}
+               >
+                 <UserIcon size={20} strokeWidth={1} />
+               </Link>
             ) : (
               <Link
                 href="/login"
                 className={cn(
-                  "transition-colors duration-500",
+                  "text-[12px] font-semibold uppercase tracking-[0.15em] transition-colors duration-500",
                   isActive
-                    ? "text-pandora-charcoal hover:text-black"
-                    : "text-white hover:text-white/80"
+                    ? "text-pandora-charcoal hover:text-pandora-gold"
+                    : "text-white/80 hover:text-white"
                 )}
                 aria-label="Sign in"
               >
-                <UserIcon size={20} strokeWidth={1} />
+                LOGIN
               </Link>
             )}
           </div>
@@ -281,15 +282,17 @@ export default function Navbar() {
                     duration: 0.35,
                   }}
                 >
-                  <Link
-                    href="/seller"
-                    onClick={() => setIsMenuOpen(false)}
-                    className="block py-3 text-[14px] font-medium uppercase tracking-[0.1em] text-pandora-charcoal transition-colors hover:text-pandora-gold"
-                  >
-                    Seller
-                  </Link>
+                  {user && role !== "admin" && (
+                    <Link
+                      href={role === "seller" ? "/seller" : "/seller-hub"}
+                      onClick={() => setIsMenuOpen(false)}
+                      className="block py-3 text-[14px] font-medium uppercase tracking-[0.1em] text-pandora-charcoal transition-colors hover:text-pandora-gold"
+                    >
+                      Seller Hub
+                    </Link>
+                  )}
                   {user ? (
-                    <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-4 mt-2">
                       <Link
                         href="/profile"
                         onClick={() => setIsMenuOpen(false)}
@@ -299,11 +302,12 @@ export default function Navbar() {
                         My Profile
                       </Link>
                       <button
-                        onClick={() => {
-                          supabase.auth.signOut();
+                        onClick={async () => {
+                          await supabase.auth.signOut();
                           setIsMenuOpen(false);
+                          window.location.href = "/";
                         }}
-                        className="flex items-center gap-2.5 py-2 text-[15px] font-medium tracking-[0.02em] text-pandora-charcoal transition-colors hover:text-pandora-gold"
+                        className="flex items-center gap-2.5 py-2 text-[15px] font-medium tracking-[0.02em] text-pandora-charcoal transition-colors hover:text-pandora-gold cursor-pointer"
                       >
                         <LogOut size={18} strokeWidth={1.5} />
                         Sign Out
@@ -313,10 +317,9 @@ export default function Navbar() {
                     <Link
                       href="/login"
                       onClick={() => setIsMenuOpen(false)}
-                      className="flex items-center gap-2.5 py-3.5 text-[15px] font-medium tracking-[0.02em] text-pandora-charcoal transition-colors hover:text-pandora-gold"
+                      className="block py-3.5 text-[14px] font-medium uppercase tracking-[0.1em] text-pandora-charcoal transition-colors hover:text-pandora-gold"
                     >
-                      <UserIcon size={18} strokeWidth={1.5} />
-                      Sign In
+                      LOGIN
                     </Link>
                   )}
                 </motion.div>

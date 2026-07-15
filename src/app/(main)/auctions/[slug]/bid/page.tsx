@@ -1,16 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import Image from "next/image";
 import { notFound, useRouter } from "next/navigation";
 import { use } from "react";
-import { auctionItems } from "@/lib/auction-data";
 import { Clock, Trophy, ArrowLeft, History } from "lucide-react";
-
-const botNames = ["Kurt Hansen", "Albert Wesker", "Joseph Stalin"];
-const botMaxBid = 40000;
-const minIncrement = 200;
-const userName = "Saburo Arasaka";
+import { createClient } from "@/lib/supabase/client";
+import { getAuctionBySlug, getBidHistory, placeBid } from "@/lib/supabase/db";
 
 interface BidEntry {
   user: string;
@@ -24,116 +19,243 @@ export default function BiddingPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(params);
-  const item = auctionItems.find((i) => i.slug === slug);
   const router = useRouter();
+  const supabase = createClient();
+
+  const [dbAuction, setDbAuction] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   const [currentHighestBid, setCurrentHighestBid] = useState(0);
   const [bidCount, setBidCount] = useState(0);
   const [bidHistory, setBidHistory] = useState<BidEntry[]>([]);
   const [bidAmount, setBidAmount] = useState("");
   const [feedback, setFeedback] = useState("");
-  const [timeLeft, setTimeLeft] = useState(20);
-  const [auctionEnded, setAuctionEnded] = useState(false);
-  const [winner, setWinner] = useState<BidEntry | null>(null);
+  
+  // Real-time ticking state
+  const [currentTime, setCurrentTime] = useState(Date.now());
 
-  const bidEndTimeRef = useRef(Date.now() + 20000);
-  const highestBidRef = useRef(0);
-  const bidHistoryRef = useRef<BidEntry[]>([]);
-
-  const endAuction = useCallback(() => {
-    setAuctionEnded(true);
-    const history = bidHistoryRef.current;
-    if (history.length > 0) {
-      setWinner(history[0]);
-    } else {
-      setWinner({ user: "No Winner", amount: 0, time: "N/A" });
+  // Function to fetch current bid history
+  const loadBidHistory = useCallback(async (auctionId: string) => {
+    try {
+      const bids = await getBidHistory(auctionId);
+      setBidCount(bids.length);
+      const formattedBids = bids.map((b: any) => ({
+        user: b.profiles?.display_name || b.profiles?.email?.split("@")[0] || "Bidder",
+        amount: b.amount,
+        time: new Date(b.created_at).toLocaleTimeString()
+      }));
+      setBidHistory(formattedBids);
+      if (formattedBids.length > 0) {
+        const highest = formattedBids[0].amount;
+        setCurrentHighestBid(highest);
+      }
+    } catch (err) {
+      console.error("Error loading bid history:", err);
     }
   }, []);
 
-  const placeBid = useCallback(
-    (user: string, amount: number) => {
-      highestBidRef.current = amount;
-      setCurrentHighestBid(amount);
-      setBidCount((prev) => prev + 1);
+  // 1. Fetch Auth User & Database Auction
+  useEffect(() => {
+    async function initPage() {
+      try {
+        // Get current auth session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name, role")
+            .eq("id", session.user.id)
+            .single();
+          
+          setCurrentUser({
+            id: session.user.id,
+            email: session.user.email,
+            displayName: profile?.display_name || session.user.email?.split("@")[0] || "User",
+            role: profile?.role || "buyer"
+          });
+        }
 
-      const entry: BidEntry = {
-        user,
-        amount,
-        time: new Date().toLocaleTimeString(),
-      };
+        // Run on-demand activation & settlement triggers
+        await supabase.rpc("activate_scheduled_auctions");
+        await supabase.rpc("settle_expired_auctions");
 
-      bidHistoryRef.current = [entry, ...bidHistoryRef.current];
-      setBidHistory((prev) => [entry, ...prev]);
+        // Get auction from DB
+        const auction = await getAuctionBySlug(slug);
+        if (auction) {
+          setDbAuction(auction);
+          setCurrentHighestBid(auction.current_bid || auction.starting_bid);
+          await loadBidHistory(auction.id);
+        } else {
+          // If no database auction exists, call notFound
+          notFound();
+        }
+      } catch (err) {
+        console.error("Error loading auction:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-      bidEndTimeRef.current = Date.now() + 20000;
-    },
-    []
-  );
+    initPage();
+  }, [slug, supabase, loadBidHistory]);
 
-  // Timer
+  // 2. Real-time Subscription for DB Auction & Bids Updates
+  useEffect(() => {
+    if (!dbAuction) return;
+
+    // Listen to INSERT on bids and UPDATE on auctions
+    const channel = supabase
+      .channel(`realtime-bidding-${dbAuction.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "bids",
+          filter: `auction_id=eq.${dbAuction.id}`,
+        },
+        async (payload) => {
+          console.log("Realtime bid received:", payload);
+          await loadBidHistory(dbAuction.id);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "auctions",
+          filter: `id=eq.${dbAuction.id}`,
+        },
+        async (payload) => {
+          console.log("Realtime auction update received:", payload.new);
+          const updatedAuction = payload.new;
+          
+          // Toast if auction extended (anti-sniping)
+          setDbAuction((prevAuction: any) => {
+            if (prevAuction && new Date(updatedAuction.end_time).getTime() > new Date(prevAuction.end_time).getTime()) {
+              setFeedback("Auction Extended");
+              setTimeout(() => {
+                setFeedback((prev) => prev === "Auction Extended" ? "" : prev);
+              }, 5000);
+            }
+            return updatedAuction;
+          });
+          
+          setCurrentHighestBid(updatedAuction.current_bid || updatedAuction.starting_bid);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [dbAuction, supabase, loadBidHistory]);
+
+  // Timer loop updating currentTime
   useEffect(() => {
     const interval = setInterval(() => {
-      const remaining = bidEndTimeRef.current - Date.now();
-      if (remaining <= 0) {
-        endAuction();
-        clearInterval(interval);
-        return;
-      }
-      setTimeLeft(Math.ceil(remaining / 1000));
+      setCurrentTime(Date.now());
     }, 1000);
     return () => clearInterval(interval);
-  }, [endAuction]);
+  }, []);
 
-  // Bot bidding
-  useEffect(() => {
-    const interval = setInterval(
-      () => {
-        const timeRemaining = bidEndTimeRef.current - Date.now();
-        if (
-          timeRemaining > 4000 &&
-          Math.random() > 0.5 &&
-          highestBidRef.current < botMaxBid
-        ) {
-          const nextBid =
-            highestBidRef.current +
-            minIncrement +
-            Math.floor(Math.random() * 500);
-          const botName = botNames[Math.floor(Math.random() * botNames.length)];
-          if (nextBid <= botMaxBid) {
-            placeBid(botName, nextBid);
-          }
-        }
-      },
-      Math.random() * 7000 + 3000
-    );
-    return () => clearInterval(interval);
-  }, [placeBid]);
+  const handlePlaceBidAction = async (amount: number) => {
+    if (!currentUser) {
+      setFeedback("Please sign in to place a bid.");
+      return;
+    }
+    if (!dbAuction) return;
+
+    try {
+      setFeedback("");
+      await placeBid(dbAuction.id, currentUser.id, amount);
+    } catch (err: any) {
+      setFeedback(err.message || "Failed to submit bid to database.");
+      console.error(err);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const amount = parseInt(bidAmount);
 
-    if (amount <= currentHighestBid) {
-      setFeedback("Bid must be higher than the current highest bid!");
+    if (isNaN(amount)) {
+      setFeedback("Please enter a valid number.");
       return;
     }
 
-    if (confirm(`Are you sure you want to place a bid of $${amount}?`)) {
-      placeBid(userName, amount);
+    const minIncrement = dbAuction?.bid_increment || 100;
+    const minBid = currentHighestBid === (dbAuction?.starting_bid || 0) && bidCount === 0
+      ? dbAuction?.starting_bid
+      : currentHighestBid + minIncrement;
+
+    if (amount < minBid) {
+      setFeedback(`Bid must be at least $${minBid.toLocaleString()}!`);
+      return;
+    }
+
+    if (!currentUser) {
+      setFeedback("You must be logged in to bid.");
+      return;
+    }
+
+    if (confirm(`Are you sure you want to place a bid of $${amount.toLocaleString()}?`)) {
+      handlePlaceBidAction(amount);
       setFeedback("");
       setBidAmount("");
     }
   };
 
-  if (!item) {
-    notFound();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-pandora-charcoal flex items-center justify-center text-white">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-pandora-gold"></div>
+          <p className="mt-4 text-[13px] tracking-wider uppercase text-white/50">Loading Auction Room...</p>
+        </div>
+      </div>
+    );
   }
 
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
+  // Derive Lifecycle State
+  const startTimeMs = dbAuction ? new Date(dbAuction.start_time).getTime() : 0;
+  const endTimeMs = dbAuction ? new Date(dbAuction.end_time).getTime() : 0;
+  
+  let derivedStatus: "scheduled" | "live" | "ended" = "scheduled";
+  let timeLeftMs = 0;
+  
+  if (dbAuction) {
+    if (currentTime < startTimeMs) {
+      derivedStatus = "scheduled";
+      timeLeftMs = startTimeMs - currentTime;
+    } else if (currentTime < endTimeMs) {
+      derivedStatus = "live";
+      timeLeftMs = endTimeMs - currentTime;
+    } else {
+      derivedStatus = "ended";
+      timeLeftMs = 0;
+    }
+  }
 
-  // Winner screen
-  if (auctionEnded && winner) {
+  const formatTimeRemaining = (ms: number) => {
+    if (ms <= 0) return "00:00:00";
+    const seconds = Math.floor((ms / 1000) % 60);
+    const minutes = Math.floor((ms / (1000 * 60)) % 60);
+    const hours = Math.floor((ms / (1000 * 60 * 60)) % 24);
+    const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+
+    const pad = (n: number) => String(n).padStart(2, "0");
+    
+    return `${days > 0 ? `${days}d ` : ""}${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  };
+
+  const itemTitle = dbAuction?.title || "Premium Artifact";
+
+  // Winner/Concluded view when ended
+  if (derivedStatus === "ended") {
+    const winner = bidHistory.length > 0 ? bidHistory[0] : null;
     return (
       <div className="min-h-screen bg-pandora-charcoal flex items-center justify-center text-white px-6">
         <div className="relative text-center p-12 max-w-lg w-full border border-pandora-gold/30 bg-pandora-charcoal-light/30 backdrop-blur-sm flex flex-col items-center">
@@ -142,20 +264,26 @@ export default function BiddingPage({
             Auction Concluded
           </p>
           <h1 className="font-serif text-4xl md:text-5xl font-medium mb-8">
-            The Winner Is
+            {winner ? "The Winner Is" : "No Bids Placed"}
           </h1>
           
-          <div className="w-full border-t border-b border-white/10 py-6 mb-8">
-            <p className="font-serif text-3xl font-medium text-white mb-2">
-              {winner.user}
-            </p>
-            <p className="text-[13px] uppercase tracking-[0.2em] text-white/60 mb-4">
-              Winning Bid
-            </p>
-            <p className="font-serif text-4xl font-medium text-pandora-gold-light">
-              ${winner.amount.toLocaleString()}
-            </p>
-          </div>
+          {winner ? (
+            <div className="w-full border-t border-b border-white/10 py-6 mb-8">
+              <p className="font-serif text-3xl font-medium text-white mb-2">
+                {winner.user}
+              </p>
+              <p className="text-[13px] uppercase tracking-[0.2em] text-white/60 mb-4">
+                Winning Bid
+              </p>
+              <p className="font-serif text-4xl font-medium text-pandora-gold-light">
+                ${winner.amount.toLocaleString()}
+              </p>
+            </div>
+          ) : (
+            <div className="w-full border-t border-b border-white/10 py-6 mb-8 text-white/60 font-serif italic text-lg">
+              No bids were placed on this artifact.
+            </div>
+          )}
           
           <button
             onClick={() => router.push("/auctions")}
@@ -180,17 +308,16 @@ export default function BiddingPage({
           <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-1" />
           Back
         </button>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-pandora-gold-light">
-          Live Auction
+        <p className="text-[11px] font-semibold uppercase tracking-[0.4em] text-pandora-gold-light animate-pulse">
+          {derivedStatus === "live" ? "🔴 Live Database Auction" : "⏳ Scheduled Auction"}
         </p>
-        <div className="w-20" /> {/* Spacer for centering */}
+        <div className="w-20" />
       </header>
 
       <main className="mx-auto max-w-[1200px] px-6 lg:px-12 mt-16">
-        {/* Item Header */}
         <div className="text-center mb-16">
           <h1 className="font-serif text-4xl md:text-6xl font-medium text-white mb-4">
-            {item.title}
+            {itemTitle}
           </h1>
           <p className="text-[13px] uppercase tracking-[0.2em] text-white/50">
             Premium Archive
@@ -198,7 +325,7 @@ export default function BiddingPage({
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-          {/* Left Column: Bidding Form & Status */}
+          {/* Left Column: Bidding Form */}
           <div className="lg:col-span-7 space-y-12">
             
             {/* Status Panel */}
@@ -221,10 +348,10 @@ export default function BiddingPage({
                 </div>
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.2em] text-white/40 mb-2">
-                    Time Remaining
+                    {derivedStatus === "live" ? "Time Remaining" : "Starts In"}
                   </p>
-                  <p className="font-serif text-4xl font-medium text-white flex items-baseline gap-2">
-                    {String(minutes).padStart(2, "0")}<span className="text-xl text-white/50">:</span>{String(seconds).padStart(2, "0")}
+                  <p className="font-serif text-3xl font-medium text-white flex items-baseline gap-2">
+                    {formatTimeRemaining(timeLeftMs)}
                   </p>
                 </div>
                 <div>
@@ -240,38 +367,64 @@ export default function BiddingPage({
 
             {/* Place Bid Panel */}
             <div className="border border-pandora-gold/20 bg-pandora-gold/5 p-8 backdrop-blur-sm">
-              <h2 className="text-[11px] font-semibold uppercase tracking-[0.3em] text-pandora-gold-light mb-8">
-                Place Your Bid
-              </h2>
-              <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                <div>
-                  <label htmlFor="bid-amount" className="block text-[11px] uppercase tracking-[0.2em] text-white/60 mb-3">
-                    Enter bid amount (In K USD)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 font-serif text-xl">$</span>
-                    <input
-                      type="number"
-                      id="bid-amount"
-                      value={bidAmount}
-                      onChange={(e) => setBidAmount(e.target.value)}
-                      placeholder={`${currentHighestBid + minIncrement}`}
-                      required
-                      className="w-full bg-transparent border-b border-white/20 px-10 py-4 text-2xl font-serif text-white focus:outline-none focus:border-pandora-gold-light transition-colors placeholder:text-white/20"
-                    />
-                  </div>
+              {derivedStatus === "scheduled" ? (
+                <div className="text-center py-6">
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-pandora-gold-light mb-2">
+                    Bidding Begins Soon
+                  </p>
+                  <p className="text-[13px] text-white/60 font-serif italic">
+                    The bidding controls will automatically activate once the start time arrives.
+                  </p>
                 </div>
-                
-                <button
-                  type="submit"
-                  className="group relative w-full overflow-hidden border border-pandora-gold px-8 py-5 text-[12px] font-semibold uppercase tracking-[0.15em] text-pandora-gold transition-all hover:bg-pandora-gold hover:text-white mt-4"
-                >
-                  <span className="relative z-10">Submit Bid</span>
-                </button>
-              </form>
+              ) : !currentUser ? (
+                <div className="text-center py-6">
+                  <p className="text-[13px] text-white/60 mb-6 font-serif italic">
+                    You must be logged in to participate in the auction.
+                  </p>
+                  <button
+                    onClick={() => router.push(`/login?redirect=/auctions/${slug}/bid`)}
+                    className="inline-block border border-pandora-gold px-8 py-4 text-[12px] font-semibold uppercase tracking-[0.15em] text-pandora-gold hover:bg-pandora-gold hover:text-white transition-all"
+                  >
+                    Sign In to Bid
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <h2 className="text-[11px] font-semibold uppercase tracking-[0.3em] text-pandora-gold-light mb-4">
+                    Place Your Bid
+                  </h2>
+                  <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                    <div>
+                      <label htmlFor="bid-amount" className="block text-[11px] uppercase tracking-[0.2em] text-white/60 mb-3">
+                        Enter bid amount (USD)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 font-serif text-xl">$</span>
+                        <input
+                          type="number"
+                          id="bid-amount"
+                          value={bidAmount}
+                          onChange={(e) => setBidAmount(e.target.value)}
+                          placeholder={`${currentHighestBid + (dbAuction?.bid_increment || 100)}`}
+                          required
+                          className="w-full bg-transparent border-b border-white/20 px-10 py-4 text-2xl font-serif text-white focus:outline-none focus:border-pandora-gold-light transition-colors placeholder:text-white/20"
+                        />
+                      </div>
+                    </div>
+                    
+                    <button
+                      type="submit"
+                      className="group relative w-full overflow-hidden border border-pandora-gold px-8 py-5 text-[12px] font-semibold uppercase tracking-[0.15em] text-pandora-gold transition-all hover:bg-pandora-gold hover:text-white mt-4"
+                    >
+                      <span className="relative z-10">Submit Bid</span>
+                    </button>
+                  </form>
+                </div>
+              )}
+
               {feedback && (
-                <p className="mt-4 text-[13px] text-red-400 font-medium tracking-wide">
-                  {feedback}
+                <p className={`mt-4 text-[13px] font-medium tracking-wide ${feedback === "Auction Extended" ? "text-pandora-gold-light animate-bounce" : "text-red-400"}`}>
+                  {feedback === "Auction Extended" ? "🎉 Auction Extended (Anti-Sniping Overtime)!" : feedback}
                 </p>
               )}
             </div>
@@ -317,12 +470,6 @@ export default function BiddingPage({
           </div>
         </div>
       </main>
-
-      <footer className="text-center text-2xl font-bold mt-10 py-4 hidden">
-        <p id="winner-announcement">
-          Winner: <span id="winner-name"></span>
-        </p>
-      </footer>
     </div>
   );
 }

@@ -1,7 +1,26 @@
 // Zustand cart store for the Buy page
 
 import { create } from "zustand";
-import type { BuyItem } from "./buy-data";
+export interface BuyItem {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  shortHeadline?: string;
+  historicalPeriod?: string;
+  conditionReport?: string;
+  ownershipHistory?: string;
+  provenance?: string;
+  price: number;
+  formattedPrice: string;
+  origin: string;
+  era: string;
+  image: string;
+  images: string[];
+  category: string;
+  createdAt: string;
+  sellerId: string;
+}
 
 export interface CartItem extends BuyItem {
   quantity: number;

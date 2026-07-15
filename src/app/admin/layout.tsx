@@ -1,30 +1,34 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  Gavel,
-  Users,
-  Settings,
-  LogOut,
-  ChevronRight,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { LogOut } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import AdminSidebarNav from "./AdminSidebarNav";
 
-const sidebarLinks = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/auctions", label: "Auctions", icon: Gavel },
-  { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
-];
-
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
+  // 1. Authenticate user session on the server
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login?redirect=/admin");
+  }
+
+  // 2. Authorize role access on the server
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || profile.role !== "admin") {
+    redirect("/");
+  }
 
   return (
     <div className="flex min-h-screen bg-[#f4f5f7]">
@@ -33,11 +37,11 @@ export default function AdminLayout({
         {/* Brand */}
         <div className="flex h-16 items-center gap-3 border-b border-gray-100 px-6">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-pandora-charcoal text-white font-serif text-sm font-bold">
-            P
+            D
           </div>
           <div>
             <p className="font-serif text-base font-bold tracking-wider text-pandora-charcoal">
-              PANDORA
+              Dynasity-Voult
             </p>
             <p className="text-[10px] uppercase tracking-widest text-gray-400">
               Admin Panel
@@ -45,35 +49,8 @@ export default function AdminLayout({
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
-          <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-            Main Menu
-          </p>
-          {sidebarLinks.map((link) => {
-            const isActive =
-              pathname === link.href ||
-              (link.href !== "/admin" && pathname.startsWith(link.href));
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "mb-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium transition-colors",
-                  isActive
-                    ? "bg-pandora-charcoal text-white"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-pandora-charcoal"
-                )}
-              >
-                <link.icon size={18} strokeWidth={1.5} />
-                {link.label}
-                {isActive && (
-                  <ChevronRight size={14} className="ml-auto" />
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+        {/* Navigation (Client-interactive sidebar navigation component) */}
+        <AdminSidebarNav />
 
         {/* Bottom */}
         <div className="border-t border-gray-100 p-3">

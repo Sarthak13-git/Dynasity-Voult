@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import BuyClient, { BuyItem } from "./BuyClient";
-import { buyItems as fallbackBuyItems } from "@/lib/buy-data"; // Fallback in case DB is not seeded
+import BuyClient from "./BuyClient";
+import { BuyItem } from "@/lib/cart-store";
 
 export const revalidate = 60; // Revalidate every minute
 
@@ -9,15 +9,33 @@ export default async function BuyPage() {
   
   const { data: artifacts, error } = await supabase
     .from("artifacts")
-    .select("*")
+    .select(`
+      *,
+      seller:profiles!seller_id (
+        store_name,
+        status
+      ),
+      auctions (id),
+      auction_applications (id, status)
+    `)
     .not("buy_now_price", "is", null)
+    .not("seller_id", "is", null)
     .eq("status", "available");
 
   let itemsToRender: BuyItem[] = [];
 
   if (artifacts && artifacts.length > 0) {
-    itemsToRender = artifacts.map((item) => {
-      // Map category back to human readable if needed, or use directly
+    // Exclude artifacts having any auction records or active auction applications
+    const directSaleArtifacts = artifacts.filter((item: any) => {
+      if (item.seller?.status === "suspended") return false;
+      const hasAuction = item.auctions && item.auctions.length > 0;
+      const hasActiveApplication = item.auction_applications && item.auction_applications.some(
+        (app: any) => ["pending", "approved", "under_review"].includes(app.status)
+      );
+      return !hasAuction && !hasActiveApplication;
+    });
+
+    itemsToRender = directSaleArtifacts.map((item: any) => {
       const categoryMap: Record<string, string> = {
         antiquity: "Antiquities",
         sculpture: "Sculptures",
@@ -32,19 +50,26 @@ export default async function BuyPage() {
 
       return {
         id: item.id,
+        slug: item.slug || item.id,
         title: item.title,
         description: item.description,
+        shortHeadline: item.short_headline || undefined,
+        historicalPeriod: item.historical_period || undefined,
+        conditionReport: item.condition_report || undefined,
+        ownershipHistory: item.ownership_history || undefined,
+        provenance: item.provenance || undefined,
         price: item.buy_now_price || 0,
         formattedPrice: `$${(item.buy_now_price || 0).toLocaleString()}`,
         origin: item.origin,
         era: item.era,
-        image: item.images && item.images.length > 0 ? item.images[0] : "/buy/item-1.jpg",
+        image: item.thumbnail_url || (item.images && item.images.length > 0 ? item.images[0] : "/buy/item-1.jpg"),
+        images: item.images && item.images.length > 0 ? item.images : [item.thumbnail_url || "/buy/item-1.jpg"],
         category: mappedCategory,
+        createdAt: item.created_at,
+        sellerId: item.seller_id,
+        sellerStoreName: item.seller?.store_name || undefined,
       };
     });
-  } else {
-    // If DB has not been seeded yet, fallback to local data
-    itemsToRender = fallbackBuyItems;
   }
 
   return <BuyClient buyItems={itemsToRender} />;

@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════
--- PANDORA — Database Schema
+-- Dynasity-Voult — Database Schema
 -- Digital Heritage House & Premium Auction Ecosystem
 -- ═══════════════════════════════════════════════════════
 
@@ -14,6 +14,12 @@ CREATE TABLE public.profiles (
   display_name TEXT,
   avatar_url TEXT,
   role TEXT NOT NULL DEFAULT 'guest' CHECK (role IN ('admin', 'bidder', 'guest')),
+  phone TEXT,
+  store_name TEXT,
+  store_description TEXT,
+  bank_account TEXT,
+  tax_id TEXT,
+  permissions JSONB NOT NULL DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -25,10 +31,17 @@ CREATE POLICY "Profiles are viewable by everyone"
   ON public.profiles FOR SELECT
   USING (true);
 
--- Users can update their own profile
-CREATE POLICY "Users can update their own profile"
+-- Users can update their own profile, or admins can update any profile
+CREATE POLICY "Users can update their own profile or admins can update any"
   ON public.profiles FOR UPDATE
-  USING (auth.uid() = id);
+  USING (
+    auth.uid() = id 
+    OR 
+    EXISTS (
+      SELECT 1 FROM public.profiles 
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
 
 -- ─── Artifacts ───
 
@@ -40,6 +53,9 @@ CREATE TABLE public.artifacts (
   era TEXT NOT NULL DEFAULT '',
   year_estimate TEXT,
   provenance TEXT NOT NULL DEFAULT '',
+  slug TEXT UNIQUE,
+  story TEXT,
+  videos TEXT[] DEFAULT '{}',
   category TEXT NOT NULL DEFAULT 'other' CHECK (
     category IN (
       'painting', 'sculpture', 'manuscript', 'jewelry',
@@ -56,6 +72,7 @@ CREATE TABLE public.artifacts (
     status IN ('archived', 'available', 'on_auction', 'sold', 'on_exhibition', 'reserved')
   ),
   is_featured BOOLEAN NOT NULL DEFAULT false,
+  seller_id UUID REFERENCES public.profiles(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -67,12 +84,38 @@ CREATE POLICY "Artifacts are viewable by everyone"
   ON public.artifacts FOR SELECT
   USING (true);
 
--- Only admins can insert/update/delete
-CREATE POLICY "Admins can manage artifacts"
-  ON public.artifacts FOR ALL
-  USING (
+-- Sellers can insert their own artifacts
+CREATE POLICY "Sellers can insert their own artifacts"
+  ON public.artifacts FOR INSERT
+  WITH CHECK (
+    auth.uid() = seller_id 
+    AND 
     EXISTS (
-      SELECT 1 FROM public.profiles
+      SELECT 1 FROM public.profiles 
+      WHERE id = auth.uid() AND role IN ('bidder', 'admin')
+    )
+  );
+
+-- Sellers can update their own artifacts, admins can update any
+CREATE POLICY "Sellers can update their own artifacts"
+  ON public.artifacts FOR UPDATE
+  USING (
+    auth.uid() = seller_id 
+    OR 
+    EXISTS (
+      SELECT 1 FROM public.profiles 
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Sellers can delete their own artifacts, admins can delete any
+CREATE POLICY "Sellers can delete their own artifacts"
+  ON public.artifacts FOR DELETE
+  USING (
+    auth.uid() = seller_id 
+    OR 
+    EXISTS (
+      SELECT 1 FROM public.profiles 
       WHERE id = auth.uid() AND role = 'admin'
     )
   );
@@ -94,6 +137,8 @@ CREATE TABLE public.auctions (
     status IN ('upcoming', 'live', 'ended', 'cancelled')
   ),
   winner_id UUID REFERENCES public.profiles(id),
+  highest_bidder_id UUID REFERENCES public.profiles(id),
+  last_bid_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -243,21 +288,85 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW
   EXECUTE FUNCTION public.handle_new_user();
 
--- Auto-update current_bid when a new bid is placed
-CREATE OR REPLACE FUNCTION public.update_current_bid()
+-- Validate bid and update current_bid in a secure, transaction-safe manner
+CREATE OR REPLACE FUNCTION public.validate_and_process_bid()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_auction public.auctions%ROWTYPE;
+  v_min_bid NUMERIC(15, 2);
+  v_seller_id UUID;
 BEGIN
+  -- 0. IDENTITY VERIFICATION: Enforce that the inserting user matches the active session.
+  -- This provides defense-in-depth security even if RLS is modified or bypassed.
+  IF auth.uid() IS NOT NULL AND NEW.user_id IS DISTINCT FROM auth.uid() THEN
+    RAISE EXCEPTION 'You cannot place a bid on behalf of another user account.';
+  END IF;
+
+  -- 1. Obtain exclusive row-level lock on the corresponding auction row to prevent race conditions.
+  -- This blocks concurrent insert transactions on the same auction, serializing validations.
+  SELECT * INTO v_auction
+  FROM public.auctions
+  WHERE id = NEW.auction_id
+  FOR UPDATE;
+
+  -- 2. Verify the auction exists
+  IF v_auction.id IS NULL THEN
+    RAISE EXCEPTION 'Auction with ID % does not exist.', NEW.auction_id;
+  END IF;
+
+  -- 3. Verify the auction is live
+  IF v_auction.status IS DISTINCT FROM 'live' THEN
+    RAISE EXCEPTION 'Bidding is only allowed on live auctions. Current status: %', v_auction.status;
+  END IF;
+
+  -- 4. Verify auction timing window (start and end times)
+  IF now() < v_auction.start_time THEN
+    RAISE EXCEPTION 'Bidding has not started yet for this auction.';
+  END IF;
+  
+  IF now() > v_auction.end_time THEN
+    RAISE EXCEPTION 'This auction has already ended.';
+  END IF;
+
+  -- 5. Prevent artifact owner/seller from bidding on their own item
+  SELECT seller_id INTO v_seller_id
+  FROM public.artifacts
+  WHERE id = v_auction.artifact_id;
+  
+  IF NEW.user_id = v_seller_id THEN
+    RAISE EXCEPTION 'Sellers are not permitted to bid on their own artifacts.';
+  END IF;
+
+  -- 6. Calculate the minimum required bid amount
+  IF v_auction.current_bid IS NULL THEN
+    v_min_bid := v_auction.starting_bid;
+  ELSE
+    v_min_bid := v_auction.current_bid + v_auction.bid_increment;
+  END IF;
+
+  -- 7. Validate that the submitted bid amount is sufficient
+  IF NEW.amount < v_min_bid THEN
+    RAISE EXCEPTION 'Bid amount of % is too low. The minimum acceptable bid is %.', NEW.amount, v_min_bid;
+  END IF;
+
+  -- 8. Automatically update the auction's state columns and timestamp
+  -- Since we hold the row lock, this update is safe and isolated.
   UPDATE public.auctions
-  SET current_bid = NEW.amount, updated_at = now()
+  SET 
+    current_bid = NEW.amount, 
+    highest_bidder_id = NEW.user_id,
+    last_bid_at = COALESCE(NEW.created_at, now()),
+    updated_at = now()
   WHERE id = NEW.auction_id;
+
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog, public;
 
-CREATE TRIGGER on_new_bid
-  AFTER INSERT ON public.bids
+CREATE TRIGGER trg_validate_and_process_bid
+  BEFORE INSERT ON public.bids
   FOR EACH ROW
-  EXECUTE FUNCTION public.update_current_bid();
+  EXECUTE FUNCTION public.validate_and_process_bid();
 
 -- Auto-update updated_at timestamp
 CREATE OR REPLACE FUNCTION public.update_updated_at()
@@ -282,6 +391,65 @@ CREATE TRIGGER update_profiles_updated_at
   BEFORE UPDATE ON public.profiles
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at();
+
+-- Prevent unauthorized modification of security-sensitive fields on profiles
+CREATE OR REPLACE FUNCTION public.check_profile_updates()
+RETURNS TRIGGER AS $$
+DECLARE
+  caller_role TEXT;
+BEGIN
+  -- 1. If the update is executed outside of an active auth context (e.g., migrations, database seeds, 
+  -- or service role administrative tasks where auth.uid() IS NULL), allow the modification unconditionally.
+  IF auth.uid() IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  -- 2. Strictly prevent any client-side update from modifying the primary key (id) column.
+  -- Gaining or modifying the user's primary identity violates foreign key constraints and maps other users.
+  IF NEW.id IS DISTINCT FROM OLD.id THEN
+    RAISE EXCEPTION 'Modifying the id field is strictly prohibited.';
+  END IF;
+
+  -- 3. Prevent non-admin users from changing the email column.
+  -- In Supabase, the email in public.profiles is synced from auth.users. Changing it directly on the profiles
+  -- table without auth verification bypasses the security flow.
+  IF NEW.email IS DISTINCT FROM OLD.email THEN
+    SELECT role INTO caller_role FROM public.profiles WHERE id = auth.uid();
+    IF caller_role IS DISTINCT FROM 'admin' THEN
+      RAISE EXCEPTION 'You do not have permission to modify the email field.';
+    END IF;
+  END IF;
+
+  -- 4. Prevent non-admin users from modifying the user role column.
+  -- This blocks standard users from self-escalating from 'guest' or 'bidder' to 'admin'.
+  IF NEW.role IS DISTINCT FROM OLD.role THEN
+    IF caller_role IS NULL THEN
+      SELECT role INTO caller_role FROM public.profiles WHERE id = auth.uid();
+    END IF;
+    IF caller_role IS DISTINCT FROM 'admin' THEN
+      RAISE EXCEPTION 'Only admins can modify user roles. Your current role is: %', COALESCE(caller_role, 'guest');
+    END IF;
+  END IF;
+
+  -- 5. Prevent non-admin users from modifying the permissions column.
+  -- This blocks standard users from escalating permissions directly.
+  IF NEW.permissions IS DISTINCT FROM OLD.permissions THEN
+    IF caller_role IS NULL THEN
+      SELECT role INTO caller_role FROM public.profiles WHERE id = auth.uid();
+    END IF;
+    IF caller_role IS DISTINCT FROM 'admin' THEN
+      RAISE EXCEPTION 'Only admins can modify permissions.';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER trg_check_profile_updates
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.check_profile_updates();
 
 CREATE TRIGGER update_exhibitions_updated_at
   BEFORE UPDATE ON public.exhibitions

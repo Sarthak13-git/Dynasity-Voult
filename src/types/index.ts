@@ -1,4 +1,4 @@
-/* ─── Core Domain Types for PANDORA ─── */
+/* ─── Core Domain Types for Dynasity-Voult ─── */
 
 // Artifact categories
 export type ArtifactCategory =
@@ -31,7 +31,7 @@ export type AuctionStatus =
   | "cancelled";
 
 // User roles
-export type UserRole = "admin" | "bidder" | "guest";
+export type UserRole = "admin" | "seller" | "buyer";
 
 // ─── Artifact ───
 

@@ -1,8 +1,8 @@
-# Database Setup Guide - PANDORA
+# Database Setup Guide - Dynasity-Voult
 
 ## ✅ What's Been Set Up
 
-I've created a complete database integration system for your PANDORA auction site:
+I've created a complete database integration system for your Dynasity-Voult auction site:
 
 ### 1. **Database Files Created**
 - `src/lib/supabase/db.ts` - All database operations (read/write)

@@ -7,10 +7,10 @@ const footerLinks = {
   explore: [
     { href: "/collection", label: "Collection" },
     { href: "/auctions", label: "Auctions" },
-    { href: "/exhibitions", label: "Exhibitions" },
-    { href: "/about", label: "About PANDORA" },
+    { href: "/about", label: "About Dynasity-Voult" },
   ],
   services: [
+    { href: "/seller-hub", label: "Become a Seller" },
     { href: "/consign", label: "Consignment" },
     { href: "/appraisal", label: "Appraisal Services" },
     { href: "/venue-booking", label: "Venue Booking" },
@@ -38,7 +38,7 @@ export default function Footer() {
               href="/"
               className="font-serif text-2xl font-bold tracking-[0.3em] text-white"
             >
-              PANDORA
+              DYNASITY-VOULT
             </Link>
             <p className="mt-6 max-w-xs text-[14px] leading-relaxed text-white/60">
               A premier digital heritage house dedicated to the curation,
@@ -49,11 +49,11 @@ export default function Footer() {
             {/* Contact Info */}
             <div className="mt-8 space-y-3">
               <a
-                href="mailto:hello@pandora.house"
+                href="mailto:hello@dynasityvoult.house"
                 className="flex items-center gap-3 text-[13px] text-white/50 transition-colors hover:text-pandora-gold-light"
               >
                 <Mail size={14} strokeWidth={1.5} />
-                hello@pandora.house
+                hello@dynasityvoult.house
               </a>
               <a
                 href="tel:+1234567890"
@@ -138,7 +138,7 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="flex flex-col items-center justify-between gap-4 border-t border-white/10 py-8 md:flex-row">
           <p className="text-[12px] text-white/30">
-            © {new Date().getFullYear()} PANDORA Digital Heritage House. All
+            © {new Date().getFullYear()} Dynasity-Voult Digital Heritage House. All
             rights reserved.
           </p>
           <div className="flex gap-6">

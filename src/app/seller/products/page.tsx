@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Edit2, Trash2, Eye, MoreVertical } from "lucide-react";
-import { getAllArtifacts } from "@/lib/supabase/db";
+import Link from "next/link";
+import { Edit2, Trash2, Eye, MoreVertical, Plus } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 interface Product {
   id: string;
@@ -18,39 +19,16 @@ interface Product {
   created_at: string;
 }
 
-const mockProducts = [
-  {
-    id: "1",
-    title: "Vintage Pocket Watch",
-    category: "timepiece",
-    estimated_value: 2500,
-    currency: "USD",
-    thumbnail_url: "",
-    status: "available",
-    created_at: "2024-02-15",
-    description: "",
-    origin: "",
-    era: "",
-  },
-  {
-    id: "2",
-    title: "Medieval Manuscript",
-    category: "manuscript",
-    estimated_value: 5800,
-    currency: "USD",
-    thumbnail_url: "",
-    status: "available",
-    created_at: "2024-02-10",
-    description: "",
-    origin: "",
-    era: "",
-  },
-
 const statusColors: Record<string, string> = {
   available: "bg-green-100 text-green-700",
   sold: "bg-gray-100 text-gray-700",
-  on_auction: "bg-blue-100 text-blue-700",
   reserved: "bg-yellow-100 text-yellow-700",
+};
+
+const statusLabels: Record<string, string> = {
+  available: "Available",
+  sold: "Sold",
+  reserved: "Reserved",
 };
 
 const categoryLabels: Record<string, string> = {
@@ -78,8 +56,28 @@ export default function MyProductsPage() {
     async function fetchProducts() {
       try {
         setLoading(true);
-        const data = await getAllArtifacts();
-        setProducts(data || []);
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data, error } = await supabase
+            .from("artifacts")
+            .select("*, auctions(id), auction_applications(id, status)")
+            .eq("seller_id", user.id)
+            .in("status", ["available", "reserved", "sold"])
+            .order("created_at", { ascending: false });
+          if (error) throw error;
+
+          const directSalesOnly = (data || []).filter((p: any) => {
+            const hasAuction = p.auctions && p.auctions.length > 0;
+            const hasActiveApp = p.auction_applications && p.auction_applications.some(
+              (app: any) => ["pending", "approved", "under_review"].includes(app.status)
+            );
+            return !hasAuction && !hasActiveApp;
+          });
+          setProducts(directSalesOnly);
+        } else {
+          setProducts([]);
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to load products";
         setError(message);
@@ -100,11 +98,21 @@ export default function MyProductsPage() {
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this product?")) {
       try {
+        const response = await fetch(`/api/products?id=${id}`, {
+          method: "DELETE",
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to delete product");
+        }
+
         setProducts(products.filter((p) => p.id !== id));
-        console.log("Product deleted:", id);
+        console.log("Product deleted from DB:", id);
       } catch (err) {
         console.error("Error deleting product:", err);
-        alert("Failed to delete product");
+        alert("Failed to delete product: " + (err instanceof Error ? err.message : "Unknown error"));
       }
     }
   };
@@ -142,17 +150,35 @@ export default function MyProductsPage() {
     <div className="space-y-6">
       {/* Header with Controls */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold text-gray-900">
-            My Products
-          </h2>
-          <p className="mt-1 text-sm text-gray-600">
-            Manage your {products.length} listed products
-          </p>
+        <div className="flex items-center justify-between w-full md:w-auto">
+          <div>
+            <h2 className="text-2xl font-semibold text-gray-900">
+              My Products
+            </h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Manage your {products.length} listed products
+            </p>
+          </div>
+          
+          <Link
+            href="/seller/add-product"
+            className="md:hidden flex items-center gap-2 rounded-lg bg-pandora-charcoal px-4 py-2 text-sm font-medium text-white hover:bg-pandora-charcoal/80 transition-colors"
+          >
+            <Plus size={18} strokeWidth={1.5} />
+            <span>Add Product</span>
+          </Link>
         </div>
 
         {/* Filter and View Controls */}
         <div className="flex items-center gap-4">
+          <Link
+            href="/seller/add-product"
+            className="hidden md:flex items-center gap-2 rounded-lg bg-pandora-charcoal px-4 py-2 text-sm font-medium text-white hover:bg-pandora-charcoal/80 transition-colors"
+          >
+            <Plus size={18} strokeWidth={1.5} />
+            <span>Add Product</span>
+          </Link>
+
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
@@ -236,34 +262,40 @@ export default function MyProductsPage() {
                   </td>
                   <td className="px-6 py-4">
                     <span
-                      className={`inline-block rounded-full px-3 py-1 text-xs font-medium capitalize ${
-                        statusColors[product.status]
-                      }`}
+                      className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${statusColors[product.status] || "bg-gray-100 text-gray-700"
+                        }`}
                     >
-                      {product.status}
+                      {statusLabels[product.status] || product.status}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-sm text-gray-600">
-                      {new Date(product.createdAt).toLocaleDateString()}
+                      {product.created_at ? new Date(product.created_at).toLocaleDateString() : "—"}
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <button
-                        className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 transition-colors"
-                        title="Edit"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(product.id)}
-                        className="rounded-lg p-2 text-red-600 hover:bg-red-50 transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
+                    {["reserved", "sold"].includes(product.status) ? (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 bg-gray-50 border border-gray-200 px-2.5 py-1 rounded">
+                        Locked (Paid/Held)
+                      </span>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/seller/products/${product.id}/edit`}
+                          className="rounded-lg p-2 text-gray-600 hover:bg-gray-100 transition-colors"
+                          title="Edit"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(product.id)}
+                          className="rounded-lg p-2 text-red-600 hover:bg-red-50 transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -308,11 +340,10 @@ export default function MyProductsPage() {
                     {product.currency} {product.estimated_value.toLocaleString()}
                   </p>
                   <span
-                    className={`inline-block rounded-full px-2 py-1 text-xs font-medium capitalize ${
-                      statusColors[product.status]
-                    }`}
+                    className={`inline-block rounded-full px-2 py-1 text-xs font-semibold ${statusColors[product.status] || "bg-gray-100 text-gray-700"
+                      }`}
                   >
-                    {product.status}
+                    {statusLabels[product.status] || product.status}
                   </span>
                 </div>
 
@@ -322,17 +353,28 @@ export default function MyProductsPage() {
                     <Eye className="h-3 w-3" />
                     <span>0 views</span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button className="rounded p-1 text-gray-600 hover:bg-gray-100 transition-colors">
-                      <Edit2 className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      className="rounded p-1 text-red-600 hover:bg-red-50 transition-colors"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
+                  {["reserved", "sold"].includes(product.status) ? (
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded">
+                      Locked
+                    </span>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <Link
+                        href={`/seller/products/${product.id}/edit`}
+                        className="rounded p-1 text-gray-600 hover:bg-gray-100 transition-colors"
+                        title="Edit"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(product.id)}
+                        className="rounded p-1 text-red-600 hover:bg-red-50 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

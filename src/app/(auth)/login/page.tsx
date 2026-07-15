@@ -1,25 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const supabase = createClient();
+
+  useEffect(() => {
+    if (searchParams.get("success") === "password_reset") {
+      setSuccessMessage("Your password has been successfully updated. Please sign in with your new password.");
+    }
+  }, [searchParams]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccessMessage(null);
     
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -57,9 +66,10 @@ export default function LoginPage() {
         <div className="text-center">
           <Link
             href="/"
-            className="font-serif text-2xl font-bold tracking-[0.3em] text-pandora-charcoal"
+            className="font-serif text-2xl font-black tracking-[0.3em] text-pandora-charcoal block mb-8"
+            style={{ fontWeight: 900 }}
           >
-            PANDORA
+            DYNASITY-VOULT
           </Link>
           <h1 className="mt-8 font-serif text-3xl font-medium text-pandora-charcoal">
             Welcome Back
@@ -74,6 +84,11 @@ export default function LoginPage() {
           {error && (
             <div className="bg-red-50 text-red-600 p-3 text-sm rounded-md border border-red-200">
               {error}
+            </div>
+          )}
+          {successMessage && (
+            <div className="bg-emerald-50 text-emerald-700 p-3 text-sm rounded-md border border-emerald-200 text-center">
+              {successMessage}
             </div>
           )}
           <div>
@@ -111,7 +126,7 @@ export default function LoginPage() {
               </label>
               <Link
                 href="/reset"
-                className="text-[12px] text-pandora-gold transition-colors hover:text-pandora-gold-light"
+                className="text-[12px] text-pandora-gold transition-colors hover:text-pandora-gold-light font-medium"
               >
                 Forgot password?
               </Link>
@@ -137,7 +152,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="group flex w-full items-center justify-center gap-3 bg-pandora-charcoal py-4 text-[12px] font-semibold uppercase tracking-[0.15em] text-white transition-colors hover:bg-pandora-gold disabled:opacity-50"
+            className="group flex w-full items-center justify-center gap-3 bg-pandora-charcoal py-4 text-[12px] font-semibold uppercase tracking-[0.15em] text-white transition-colors hover:bg-pandora-gold disabled:opacity-50 cursor-pointer"
           >
             {loading ? "Signing In..." : "Sign In"}
             {!loading && (
@@ -161,7 +176,7 @@ export default function LoginPage() {
         {/* Google Login */}
         <button
           onClick={handleGoogleLogin}
-          className="flex w-full items-center justify-center gap-3 border border-pandora-cream bg-white py-4 text-[13px] font-medium text-pandora-charcoal transition-colors hover:bg-pandora-ivory"
+          className="flex w-full items-center justify-center gap-3 border border-pandora-cream bg-white py-4 text-[13px] font-medium text-pandora-charcoal transition-colors hover:bg-pandora-ivory cursor-pointer"
         >
           <svg className="h-5 w-5" viewBox="0 0 24 24">
             <path
@@ -196,5 +211,19 @@ export default function LoginPage() {
         </p>
       </motion.div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-pandora-ivory">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-pandora-gold" />
+        </div>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   );
 }

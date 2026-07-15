@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Scratch/debug scripts (may contain secrets)
+scratch/
+scratch_*.js
+scratch_*.ts
+check_*.js
+PROJECT_DUMP.md
