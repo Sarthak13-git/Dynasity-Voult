@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { getBaseUrl } from "@/lib/get-base-url";
 
 function LoginPageContent() {
   const router = useRouter();
@@ -49,7 +50,7 @@ function LoginPageContent() {
     supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/callback`,
+        redirectTo: `${getBaseUrl()}/callback`,
       },
     });
   };

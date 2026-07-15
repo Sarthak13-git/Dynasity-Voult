@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { ShieldCheck, Download, AlertTriangle, FileText, ArrowLeft, CheckCircle2 } from "lucide-react";
 import Image from "next/image";
+import { getBaseUrl } from "@/lib/get-base-url";
 
 export const dynamic = "force-dynamic";
 
@@ -96,9 +97,8 @@ export default async function VerifyCertificatePage({ params }: Props) {
   // If is_verified = false but record exists, show revoked state
   const isRevoked = !doc.is_verified;
 
-  // Build current page URL for QR code generation
-  // (We target production or local address dynamically)
-  const host = typeof process !== "undefined" ? process.env.NEXT_PUBLIC_SITE_URL || "https://dynasity-voult.com" : "";
+  // Build current page URL for QR code generation — always uses configured production URL
+  const host = getBaseUrl();
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(`${host}/verify/${verificationId}`)}`;
 
   const getDocTypeLabel = (type: string, customTitle: string) => {

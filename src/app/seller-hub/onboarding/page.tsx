@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { getBaseUrl } from "@/lib/get-base-url";
 import { motion } from "motion/react";
 import { 
   Store, 
@@ -209,7 +210,7 @@ export default function SellerOnboardingPage() {
               temp_tax_id: formData.taxId,
               temp_bank_account: formData.bankAccount,
             },
-            emailRedirectTo: `${window.location.origin}/callback?next=${encodeURIComponent("/seller-hub/onboarding")}`,
+            emailRedirectTo: `${getBaseUrl()}/callback?next=${encodeURIComponent("/seller-hub/onboarding")}`,
           },
         });
 

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit";
 import Stripe from "stripe";
+import { getBaseUrl } from "@/lib/get-base-url";
 
 // Initialize Stripe with secret key
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_placeholder_for_build", {
@@ -145,8 +146,8 @@ export async function POST(request: Request) {
       price = Number(artifact.buy_now_price);
     }
 
-    // 6. Calculate origin from request headers
-    const origin = request.headers.get("origin") || request.headers.get("referer") || "http://localhost:3000";
+    // 6. Calculate origin from request headers — never fall back to hardcoded localhost
+    const origin = request.headers.get("origin") || request.headers.get("referer") || getBaseUrl();
     const originUrl = origin.endsWith("/") ? origin.slice(0, -1) : origin;
 
     // 7. Insert the pending order into the orders table first to get order_id

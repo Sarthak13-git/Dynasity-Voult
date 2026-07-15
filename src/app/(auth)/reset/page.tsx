@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "motion/react";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { getBaseUrl } from "@/lib/get-base-url";
 
 function ResetPageContent() {
   const router = useRouter();
@@ -63,7 +64,7 @@ function ResetPageContent() {
     }
 
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/callback?type=recovery&next=/reset`,
+      redirectTo: `${getBaseUrl()}/callback?type=recovery&next=/reset`,
     });
 
     if (resetError) {

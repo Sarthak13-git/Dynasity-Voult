@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { Mail, Lock, User, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { getBaseUrl } from "@/lib/get-base-url";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -31,7 +32,7 @@ export default function SignupPage() {
       type: "signup",
       email: email,
       options: {
-        emailRedirectTo: `${window.location.origin}/callback`,
+        emailRedirectTo: `${getBaseUrl()}/callback`,
       },
     });
 
@@ -68,7 +69,7 @@ export default function SignupPage() {
         data: {
           full_name: name,
         },
-        emailRedirectTo: `${window.location.origin}/callback`,
+        emailRedirectTo: `${getBaseUrl()}/callback`,
       },
     });
 
@@ -102,7 +103,7 @@ export default function SignupPage() {
     supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/callback`,
+        redirectTo: `${getBaseUrl()}/callback`,
       },
     });
   };
