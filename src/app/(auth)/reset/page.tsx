@@ -50,31 +50,35 @@ function ResetPageContent() {
     setError(null);
     setSuccessMessage(null);
 
-    // Verify if email exists in public.profiles first so we can show a nice error if the account doesn't exist
-    const { data: existingProfile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("email", email)
-      .maybeSingle();
-
-    if (!existingProfile) {
-      setError("No account found with this email address.");
-      setLoading(false);
-      return;
-    }
+    // Never check the profiles table before calling resetPasswordForEmail.
+    // Doing so causes:
+    //   1. Inconsistent behavior: RLS policies / anon-key access differ by
+    //      environment, device, and session state — so the same email returns
+    //      different results on mobile vs desktop.
+    //   2. Account enumeration: "No account found" leaks whether an email
+    //      is registered, a security vulnerability.
+    //
+    // Supabase handles non-existent emails silently on its own (no email sent,
+    // no error returned to the client). We always show the same neutral message.
 
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${getBaseUrl()}/callback?type=recovery&next=/reset`,
     });
 
+    setLoading(false);
+
     if (resetError) {
+      // Only surface real infrastructure errors — not "user not found" style messages.
+      // Supabase never returns "user not found" here; it silently no-ops.
       setError(resetError.message);
-      setLoading(false);
       return;
     }
 
-    setSuccessMessage("A password reset link has been sent to your email. Please check your inbox.");
-    setLoading(false);
+    // Always show the same neutral message regardless of whether the email
+    // is registered. This is both consistent and secure.
+    setSuccessMessage(
+      "If an account exists for this email, we've sent a password reset link. Please check your inbox."
+    );
   };
 
   // Step 2: Update Password
