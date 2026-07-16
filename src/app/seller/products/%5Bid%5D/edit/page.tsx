@@ -420,7 +420,9 @@ export default function EditProductPage() {
 
       // 5. Final publish re-evaluation status check
       const parsedValue = parseFloat(formData.estimated_value) || 0;
-      const targetStatus = parsedValue >= PREMIUM_AUCTION_THRESHOLD ? "pending_auction_approval" : formData.status;
+      const targetStatus = parsedValue >= PREMIUM_AUCTION_THRESHOLD ? "pending_auction_approval" : "available";
+
+
       
       const { error: updateStatusError } = await supabase
         .from("artifacts")

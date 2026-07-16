@@ -173,7 +173,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    if (artifact.status !== "available") {
+    if (artifact.status !== "available" && artifact.status !== "draft") {
       return NextResponse.json(
         { error: `Forbidden: Product is currently ${artifact.status} and cannot be deleted.` },
         { status: 400 }
@@ -260,7 +260,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    if (artifact.status !== "available") {
+    if (artifact.status !== "available" && artifact.status !== "draft") {
       return NextResponse.json(
         { error: `Forbidden: Product is currently ${artifact.status} and cannot be modified.` },
         { status: 400 }

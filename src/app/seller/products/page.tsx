@@ -63,8 +63,9 @@ export default function MyProductsPage() {
             .from("artifacts")
             .select("*, auctions(id), auction_applications(id, status)")
             .eq("seller_id", user.id)
-            .in("status", ["available", "reserved", "sold"])
+            .in("status", ["draft", "available", "reserved", "sold"])
             .order("created_at", { ascending: false });
+
           if (error) throw error;
 
           const directSalesOnly = (data || []).filter((p: any) => {

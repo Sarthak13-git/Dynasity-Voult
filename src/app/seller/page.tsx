@@ -45,8 +45,9 @@ export default function SellerDashboard() {
             .from("artifacts")
             .select("*, auctions(id), auction_applications(id, status)")
             .eq("seller_id", user.id)
-            .in("status", ["available", "reserved", "sold", "pending_auction_approval", "on_auction"])
+            .in("status", ["draft", "available", "reserved", "sold", "pending_auction_approval", "on_auction"])
             .order("created_at", { ascending: false });
+
           if (error) throw error;
           
           const directSalesOnly = (data || []).filter((p: any) => {
