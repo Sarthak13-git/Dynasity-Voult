@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-import { PREMIUM_AUCTION_THRESHOLD, PREMIUM_AUCTION_THRESHOLD_LABEL } from "@/lib/constants";
 
 /**
  * API route to add a product to database
@@ -90,7 +89,11 @@ export async function POST(request: Request) {
         images: images || [],
         thumbnail_url: images?.[0] || null,
         seller_id: user.id, // Enforce seller ownership
-        status: parsedValue >= PREMIUM_AUCTION_THRESHOLD ? "pending_auction_approval" : "available",
+        // Start as 'draft' — the seller workflow upgrades to 'available' or
+        // 'pending_auction_approval' only after all required documents are
+        // successfully uploaded. This prevents the document validation trigger
+        // from racing with the insert and causing a constraint violation.
+        status: "draft",
         is_featured: false,
       })
       .select()

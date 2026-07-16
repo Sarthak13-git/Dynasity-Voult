@@ -15,7 +15,7 @@ export interface ArtifactData {
   estimated_value: number;
   buy_now_price?: number;
   currency?: string;
-  status?: "archived" | "available" | "on_auction" | "sold" | "on_exhibition" | "reserved";
+  status?: "draft" | "archived" | "available" | "on_auction" | "sold" | "on_exhibition" | "reserved";
   is_featured?: boolean;
   slug?: string;
   story?: string;

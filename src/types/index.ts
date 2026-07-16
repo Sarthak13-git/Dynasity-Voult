@@ -16,6 +16,7 @@ export type ArtifactCategory =
 
 // Artifact status
 export type ArtifactStatus =
+  | "draft"
   | "archived"
   | "available"
   | "on_auction"
