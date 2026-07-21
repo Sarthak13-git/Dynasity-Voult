@@ -4,6 +4,8 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { formatHistoricalDate } from "@/lib/format-historical-date";
+
 import {
   AlertCircle,
   CheckCircle,
@@ -34,12 +36,17 @@ interface Artifact {
   currency: string;
   thumbnail_url: string | null;
   seller_id: string;
+  creation_year?: number | null;
+  calendar_era?: string | null;
+  is_estimated?: boolean;
+  historical_period?: string | null;
   seller?: {
     display_name: string;
     store_name: string;
     email: string;
   };
 }
+
 
 interface BuyerProfile {
   id: string;
@@ -494,7 +501,14 @@ export default function AdminOrdersPage() {
                             className="h-8 w-8 rounded object-cover border border-gray-100 shrink-0"
                           />
                         )}
-                        <span className="font-semibold text-gray-900 truncate max-w-[160px]">{order.artifacts?.title}</span>
+                        <div>
+                          <span className="font-semibold text-gray-900 truncate max-w-[160px] block">{order.artifacts?.title}</span>
+                          <span className="text-[10px] text-gray-400 block mt-0.5">
+                            {formatHistoricalDate(order.artifacts?.creation_year, order.artifacts?.calendar_era, order.artifacts?.is_estimated)}
+                            {order.artifacts?.historical_period && ` • ${order.artifacts.historical_period}`}
+                          </span>
+                        </div>
+
                       </div>
                     </td>
                     <td className="px-6 py-4 font-serif font-bold text-gray-900">

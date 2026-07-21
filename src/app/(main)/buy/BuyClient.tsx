@@ -371,9 +371,12 @@ export default function BuyClient({
       conditionReport: item.conditionReport,
       ownershipHistory: item.ownershipHistory,
       sellerStoreName: (item as any).sellerStoreName,
+      creationYear: item.creationYear,
+      calendarEra: item.calendarEra,
       rawItem: item,
     }));
   }, [buyItems]);
+
 
   // Perform smart search
   const searchResults = useMemo(() => {

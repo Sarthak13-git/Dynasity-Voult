@@ -40,11 +40,16 @@ export async function POST(request: Request) {
       origin,
       era,
       year_estimate,
+      creation_year,
+      calendar_era,
+      is_estimated,
+      historical_period,
       provenance,
       estimated_value,
       currency,
       images,
     } = body;
+
 
     // Validate required fields
     if (!title || !description || !category || !estimated_value) {
@@ -62,6 +67,36 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    // Validate historical date system fields
+    const parsedYear = creation_year !== undefined && creation_year !== null && creation_year !== "" ? Number(creation_year) : null;
+    if (parsedYear !== null) {
+      if (isNaN(parsedYear) || parsedYear <= 0) {
+        return NextResponse.json(
+          { error: "Creation year must be a valid positive integer." },
+          { status: 400 }
+        );
+      }
+      
+      const allowedEras = ["BCE", "BC", "CE", "AD"];
+      if (!calendar_era || !allowedEras.includes(calendar_era)) {
+        return NextResponse.json(
+          { error: "Invalid calendar era selected." },
+          { status: 400 }
+        );
+      }
+
+      if (calendar_era === "CE" || calendar_era === "AD") {
+        const currentYear = new Date().getFullYear();
+        if (parsedYear > currentYear) {
+          return NextResponse.json(
+            { error: `Creation year cannot be in the future for ${calendar_era} era.` },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
 
     // Generate a unique slug based on title + a short random string
     const baseSlug = title
@@ -81,6 +116,10 @@ export async function POST(request: Request) {
         origin: origin || "",
         era: era || "",
         year_estimate: year_estimate || null,
+        creation_year: parsedYear,
+        calendar_era: calendar_era || "CE",
+        is_estimated: is_estimated !== false,
+        historical_period: historical_period || null,
         provenance: provenance || "",
         slug,
         estimated_value: parsedValue,
@@ -96,6 +135,7 @@ export async function POST(request: Request) {
         status: "draft",
         is_featured: false,
       })
+
       .select()
       .single();
 
@@ -288,12 +328,17 @@ export async function PATCH(request: Request) {
       origin,
       era,
       year_estimate,
+      creation_year,
+      calendar_era,
+      is_estimated,
+      historical_period,
       provenance,
       estimated_value,
       currency,
       images,
       status,
     } = body;
+
 
     // Validate required fields
     if (!title || !description || !category || !estimated_value) {
@@ -302,6 +347,36 @@ export async function PATCH(request: Request) {
         { status: 400 }
       );
     }
+
+    // Validate historical date system fields
+    const parsedYear = creation_year !== undefined && creation_year !== null && creation_year !== "" ? Number(creation_year) : null;
+    if (parsedYear !== null) {
+      if (isNaN(parsedYear) || parsedYear <= 0) {
+        return NextResponse.json(
+          { error: "Creation year must be a valid positive integer." },
+          { status: 400 }
+        );
+      }
+      
+      const allowedEras = ["BCE", "BC", "CE", "AD"];
+      if (!calendar_era || !allowedEras.includes(calendar_era)) {
+        return NextResponse.json(
+          { error: "Invalid calendar era selected." },
+          { status: 400 }
+        );
+      }
+
+      if (calendar_era === "CE" || calendar_era === "AD") {
+        const currentYear = new Date().getFullYear();
+        if (parsedYear > currentYear) {
+          return NextResponse.json(
+            { error: `Creation year cannot be in the future for ${calendar_era} era.` },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
 
     // 4. Perform update
     const { data: product, error: dbError } = await supabase
@@ -313,6 +388,10 @@ export async function PATCH(request: Request) {
         origin: origin || "",
         era: era || "",
         year_estimate: year_estimate || null,
+        creation_year: parsedYear,
+        calendar_era: calendar_era || "CE",
+        is_estimated: is_estimated !== false,
+        historical_period: historical_period || null,
         provenance: provenance || "",
         estimated_value: parseFloat(estimated_value),
         currency: currency || "USD",
@@ -320,6 +399,7 @@ export async function PATCH(request: Request) {
         thumbnail_url: images?.[0] || null,
         status: status || "available",
       })
+
       .eq("id", id)
       .select()
       .single();

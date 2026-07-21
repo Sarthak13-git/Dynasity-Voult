@@ -8,6 +8,9 @@ export interface BuyItem {
   description: string;
   shortHeadline?: string;
   historicalPeriod?: string;
+  creationYear?: number | null;
+  calendarEra?: string | null;
+  isEstimated?: boolean;
   conditionReport?: string;
   ownershipHistory?: string;
   provenance?: string;
@@ -21,6 +24,7 @@ export interface BuyItem {
   createdAt: string;
   sellerId: string;
 }
+
 
 export interface CartItem extends BuyItem {
   quantity: number;

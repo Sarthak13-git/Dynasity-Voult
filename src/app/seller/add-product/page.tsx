@@ -36,11 +36,15 @@ export default function AddProductPage() {
     category: "painting",
     origin: "",
     era: "",
-    year_estimate: "",
+    creation_year: "",
+    calendar_era: "CE",
+    is_estimated: true,
+    historical_period: "",
     provenance: "",
     estimated_value: "",
     currency: "USD",
   });
+
 
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [dragActive, setDragActive] = useState(false);
@@ -65,9 +69,15 @@ export default function AddProductPage() {
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type } = e.target;
+    if (type === "checkbox") {
+      const checked = (e.target as HTMLInputElement).checked;
+      setFormData((prev) => ({ ...prev, [name]: checked }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
+
 
   /* ────────────────────────────────────────────
      Image Upload Handling
@@ -202,7 +212,10 @@ export default function AddProductPage() {
         description: formData.description,
         origin: formData.origin,
         era: formData.era,
-        year_estimate: formData.year_estimate || null,
+        creation_year: formData.creation_year ? parseInt(formData.creation_year) : null,
+        calendar_era: formData.calendar_era,
+        is_estimated: formData.is_estimated,
+        historical_period: formData.historical_period || null,
         provenance: formData.provenance,
         category: formData.category,
         images: uploadedImages,
@@ -212,6 +225,7 @@ export default function AddProductPage() {
         status: "draft" as const, // Start as draft until documents are validated
         is_featured: false,
       };
+
 
       // 3. Save draft artifact to database
       const response = await fetch("/api/products", {
@@ -268,11 +282,15 @@ export default function AddProductPage() {
           category: "painting",
           origin: "",
           era: "",
-          year_estimate: "",
+          creation_year: "",
+          calendar_era: "CE",
+          is_estimated: true,
+          historical_period: "",
           provenance: "",
           estimated_value: "",
           currency: "USD",
         });
+
         setUploadedImages([]);
         setCoaFile(null);
         setProvenanceFile(null);
@@ -305,11 +323,15 @@ export default function AddProductPage() {
       category: "painting",
       origin: "",
       era: "",
-      year_estimate: "",
+      creation_year: "",
+      calendar_era: "CE",
+      is_estimated: true,
+      historical_period: "",
       provenance: "",
       estimated_value: "",
       currency: "USD",
     });
+
     setUploadedImages([]);
     setCoaFile(null);
     setProvenanceFile(null);
@@ -400,7 +422,7 @@ export default function AddProductPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Era</label>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Era Label</label>
                 <input
                   type="text"
                   name="era"
@@ -412,17 +434,69 @@ export default function AddProductPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-2">Year Estimate</label>
+                <label className="block text-sm font-semibold text-gray-900 mb-2">Historical Period</label>
                 <input
-                  type="number"
-                  name="year_estimate"
-                  value={formData.year_estimate}
+                  type="text"
+                  name="historical_period"
+                  value={formData.historical_period}
                   onChange={handleInputChange}
-                  placeholder="e.g., 1960"
+                  placeholder="e.g., Ancient Rome"
                   className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-400 focus:outline-none"
                 />
               </div>
             </div>
+
+            <div className="rounded-lg border border-gray-100 bg-gray-50/50 p-4 space-y-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-700">Estimated Creation Date</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2">Creation Year</label>
+                  <input
+                    type="number"
+                    name="creation_year"
+                    value={formData.creation_year}
+                    onChange={handleInputChange}
+                    placeholder="e.g., 120"
+                    min="1"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-400 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2">Era Context</label>
+                  <select
+                    name="calendar_era"
+                    value={formData.calendar_era}
+                    onChange={handleInputChange}
+                    className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
+                  >
+                    <option value="CE">CE (Common Era) ⭐ Default</option>
+                    <option value="AD">AD (Anno Domini)</option>
+                    <option value="BCE">BCE (Before Common Era)</option>
+                    <option value="BC">BC (Before Christ)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="is_estimated"
+                  name="is_estimated"
+                  checked={formData.is_estimated}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 rounded border-gray-300 text-pandora-gold focus:ring-pandora-gold/30"
+                />
+                <label htmlFor="is_estimated" className="text-xs font-medium text-gray-700 select-none cursor-pointer">
+                  This date is an estimate (displays as circa "c.")
+                </label>
+              </div>
+
+              <p className="text-[11px] text-gray-400 leading-normal">
+                Use BCE/BC for ancient artifacts before year 1, and CE/AD for later historical and modern objects.
+              </p>
+            </div>
+
 
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-2">

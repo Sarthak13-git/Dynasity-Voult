@@ -43,8 +43,13 @@ export async function GET(request: Request) {
         buy_now_price,
         currency,
         thumbnail_url,
-        seller_id
+        seller_id,
+        creation_year,
+        calendar_era,
+        is_estimated,
+        historical_period
       ),
+
       profiles:user_id (
         id,
         display_name,

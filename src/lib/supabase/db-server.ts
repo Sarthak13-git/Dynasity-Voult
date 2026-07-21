@@ -19,6 +19,10 @@ export async function addArtifact(artifactData: ArtifactData) {
         origin: artifactData.origin || "",
         era: artifactData.era || "",
         year_estimate: artifactData.year_estimate || null,
+        creation_year: artifactData.creation_year || null,
+        calendar_era: artifactData.calendar_era || "CE",
+        is_estimated: artifactData.is_estimated !== false,
+        historical_period: artifactData.historical_period || null,
         provenance: artifactData.provenance || "",
         category: artifactData.category,
         images: artifactData.images || [],
@@ -32,6 +36,7 @@ export async function addArtifact(artifactData: ArtifactData) {
         story: artifactData.story || null,
         videos: artifactData.videos || [],
       },
+
     ])
     .select();
 
@@ -51,6 +56,10 @@ export async function addArtifactsBulk(artifactsData: ArtifactData[]) {
     origin: artifact.origin || "",
     era: artifact.era || "",
     year_estimate: artifact.year_estimate || null,
+    creation_year: artifact.creation_year || null,
+    calendar_era: artifact.calendar_era || "CE",
+    is_estimated: artifact.is_estimated !== false,
+    historical_period: artifact.historical_period || null,
     provenance: artifact.provenance || "",
     category: artifact.category,
     images: artifact.images || [],
@@ -63,6 +72,7 @@ export async function addArtifactsBulk(artifactsData: ArtifactData[]) {
     slug: artifact.slug || null,
     story: artifact.story || null,
     videos: artifact.videos || [],
+
   }));
 
   const { data, error } = await supabase

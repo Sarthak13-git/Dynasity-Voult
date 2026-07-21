@@ -55,6 +55,9 @@ export default async function BuyPage() {
         description: item.description,
         shortHeadline: item.short_headline || undefined,
         historicalPeriod: item.historical_period || undefined,
+        creationYear: item.creation_year || null,
+        calendarEra: item.calendar_era || null,
+        isEstimated: item.is_estimated !== false,
         conditionReport: item.condition_report || undefined,
         ownershipHistory: item.ownership_history || undefined,
         provenance: item.provenance || undefined,
@@ -69,6 +72,7 @@ export default async function BuyPage() {
         sellerId: item.seller_id,
         sellerStoreName: item.seller?.store_name || undefined,
       };
+
     });
   }
 

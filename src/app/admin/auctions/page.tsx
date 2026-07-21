@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { formatHistoricalDate } from "@/lib/format-historical-date";
+
 import { getAuctionDisplayStatus } from "@/lib/auction-status";
 import {
   Search,
@@ -242,8 +244,9 @@ export default function AdminAuctionsPage() {
                               {auction.title || art.title}
                             </p>
                             <p className="text-xs text-gray-400 truncate mt-0.5">
-                              {art.origin || "Unknown Origin"} • {art.era || "Unknown Era"}
+                              {art.origin || "Unknown Origin"} • {formatHistoricalDate(art.creation_year, art.calendar_era, art.is_estimated)}
                             </p>
+
                           </div>
                         </div>
                       </td>
@@ -397,9 +400,18 @@ export default function AdminAuctionsPage() {
                       Era: {selectedAuction.artifacts?.era || "Unknown"}
                     </span>
                     <span className="rounded bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-600">
+                      Estimated Creation: {formatHistoricalDate(selectedAuction.artifacts?.creation_year, selectedAuction.artifacts?.calendar_era, selectedAuction.artifacts?.is_estimated)}
+                    </span>
+                    {selectedAuction.artifacts?.historical_period && (
+                      <span className="rounded bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-600">
+                        Period: {selectedAuction.artifacts.historical_period}
+                      </span>
+                    )}
+                    <span className="rounded bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-600">
                       Category: {selectedAuction.artifacts?.category || "Other"}
                     </span>
                   </div>
+
                 </div>
               </div>
 

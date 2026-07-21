@@ -7,7 +7,11 @@ export interface ArtifactData {
   description?: string;
   origin?: string;
   era?: string;
-  year_estimate?: string;
+  year_estimate?: string; // Deprecated
+  creation_year?: number;
+  calendar_era?: "BCE" | "BC" | "CE" | "AD";
+  is_estimated?: boolean;
+  historical_period?: string;
   provenance?: string;
   category: string;
   images?: string[];
@@ -21,6 +25,7 @@ export interface ArtifactData {
   story?: string;
   videos?: string[];
 }
+
 
 export interface AuctionData {
   id?: string;

@@ -14,8 +14,11 @@ export interface SearchableItem {
   conditionReport?: string;
   ownershipHistory?: string;
   sellerStoreName?: string;
+  creationYear?: number | null;
+  calendarEra?: string | null;
   rawItem: any; // Reference to original item (BuyItem or Auction)
 }
+
 
 function levenshteinDistance(s1: string, s2: string): number {
   const len1 = s1.length;
@@ -99,6 +102,38 @@ export function performSmartSearch(
     const reportLower = (item.conditionReport || "").toLowerCase();
     const historyLower = (item.ownershipHistory || "").toLowerCase();
     const storeLower = (item.sellerStoreName || "").toLowerCase();
+
+    // Year and Era searching logic
+    const creationYearStr = item.creationYear ? String(item.creationYear) : "";
+    const calendarEraStr = item.calendarEra ? String(item.calendarEra).toLowerCase() : "";
+
+    // Parse query for explicit year + era (e.g. 120 CE, 120 BC, etc.)
+    const eraRegex = /\b(\d+)\s*(bce|bc|ce|ad)\b/gi;
+    let eraMatch;
+    let matchesYearAndEra = false;
+    while ((eraMatch = eraRegex.exec(trimmedQuery)) !== null) {
+      const qYear = eraMatch[1];
+      const qEra = eraMatch[2].toLowerCase();
+      const normEra = (qEra === "bc" ? "bce" : (qEra === "ad" ? "ce" : qEra));
+      const normItemEra = (calendarEraStr === "bc" ? "bce" : (calendarEraStr === "ad" ? "ce" : calendarEraStr));
+      if (creationYearStr === qYear && normEra === normItemEra) {
+        matchesYearAndEra = true;
+      }
+    }
+
+    if (matchesYearAndEra) {
+      score += 15000;
+      hasExactMatch = true;
+      matchedFields.push("year_era_exact");
+    }
+
+    // Direct Year number matching
+    if (creationYearStr && queryTokens.includes(creationYearStr)) {
+      score += 8000;
+      hasExactMatch = true;
+      matchedFields.push("year_exact");
+    }
+
 
     // 1. Exact Title Match
     if (titleLower === trimmedQuery) {

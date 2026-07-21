@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { formatHistoricalDate } from "@/lib/format-historical-date";
+
 import {
   AlertCircle,
   CheckCircle,
@@ -40,12 +42,17 @@ interface DocumentRecord {
     title: string;
     thumbnail_url: string;
     seller_id: string;
+    creation_year?: number | null;
+    calendar_era?: string | null;
+    is_estimated?: boolean;
+    historical_period?: string | null;
     seller: {
       display_name: string;
       store_name: string;
       email: string;
     };
   };
+
 }
 
 export default function AdminDocumentsPage() {
@@ -456,7 +463,12 @@ export default function AdminDocumentsPage() {
                   <div className="text-xs text-gray-500 space-y-0.5">
                     <p><strong className="text-gray-700">Seller Store:</strong> {selectedDoc.artifacts?.seller?.store_name || "Antiquarian Partner"}</p>
                     <p><strong className="text-gray-700">Seller Email:</strong> {selectedDoc.artifacts?.seller?.email}</p>
+                    <p><strong className="text-gray-700">Estimated Creation:</strong> {formatHistoricalDate(selectedDoc.artifacts?.creation_year, selectedDoc.artifacts?.calendar_era, selectedDoc.artifacts?.is_estimated)}</p>
+                    {selectedDoc.artifacts?.historical_period && (
+                      <p><strong className="text-gray-700">Period:</strong> {selectedDoc.artifacts.historical_period}</p>
+                    )}
                   </div>
+
                 </div>
               </div>
 

@@ -5,11 +5,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { formatHistoricalDate } from "@/lib/format-historical-date";
 import {
   MapPin, Clock, Heart, Share2, ZoomIn, ZoomOut, X,
   Copy, Mail, Facebook, Twitter, ShieldCheck,
   ChevronLeft, ChevronRight, ShoppingBag
 } from "lucide-react";
+
 
 interface ProductDetailClientProps {
   artifact: any;
@@ -270,6 +272,16 @@ export default function ProductDetailClient({
                     <span className="font-semibold text-pandora-charcoal mt-1 block">{artifact.era || "N/A"}</span>
                   </div>
                   <div className="border border-pandora-cream/40 rounded p-3">
+                    <span className="text-[10px] text-gray-400 uppercase tracking-wider block">Estimated Creation</span>
+                    <span className="font-semibold text-pandora-gold mt-1 block">
+                      {formatHistoricalDate(artifact.creation_year, artifact.calendar_era, artifact.is_estimated)}
+                    </span>
+                  </div>
+                  <div className="border border-pandora-cream/40 rounded p-3">
+                    <span className="text-[10px] text-gray-400 uppercase tracking-wider block">Historical Period</span>
+                    <span className="font-semibold text-pandora-charcoal mt-1 block">{artifact.historical_period || "N/A"}</span>
+                  </div>
+                  <div className="border border-pandora-cream/40 rounded p-3">
                     <span className="text-[10px] text-gray-400 uppercase tracking-wider block">Verification ID</span>
                     <span className="font-mono font-bold text-pandora-gold mt-1 block">
                       {documents.find(d => d.is_verified && d.verification_id)?.verification_id || "DV-PENDING"}
@@ -287,8 +299,8 @@ export default function ProductDetailClient({
                         : "N/A"}
                     </span>
                   </div>
-                  <div className="border border-pandora-cream/40 rounded p-3 col-span-2 md:col-span-3">
-                    <span className="text-[10px] text-gray-400 uppercase tracking-wider block">Curation Last Updated</span>
+                  <div className="border border-pandora-cream/40 rounded p-3 col-span-2 md:col-span-1">
+                    <span className="text-[10px] text-gray-400 uppercase tracking-wider block">Curation Updated</span>
                     <span className="font-semibold text-pandora-charcoal mt-1 block">
                       {new Date(artifact.updated_at).toLocaleDateString(undefined, {
                         year: "numeric",
@@ -298,6 +310,7 @@ export default function ProductDetailClient({
                     </span>
                   </div>
                 </div>
+
               </div>
 
               {/* Artifact Timeline & Historical Journey */}
@@ -367,6 +380,13 @@ export default function ProductDetailClient({
               {/* Technical Specifications details block */}
               <div className="grid gap-6 md:grid-cols-2 pt-6">
                 
+                <div className="space-y-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Estimated Creation</span>
+                  <p className="text-xs font-semibold text-pandora-charcoal bg-white border border-pandora-cream rounded px-3.5 py-2.5">
+                    {formatHistoricalDate(artifact.creation_year, artifact.calendar_era, artifact.is_estimated)}
+                  </p>
+                </div>
+
                 {artifact.historical_period && (
                   <div className="space-y-2">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">Historical Period</span>
@@ -375,6 +395,7 @@ export default function ProductDetailClient({
                     </p>
                   </div>
                 )}
+
 
                 {artifact.condition_report && (
                   <div className="space-y-2">

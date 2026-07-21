@@ -42,7 +42,11 @@ export interface Artifact {
   description: string;
   origin: string;
   era: string;
-  year_estimate: string | null;
+  year_estimate: string | null; // Deprecated
+  creation_year: number | null;
+  calendar_era: "BCE" | "BC" | "CE" | "AD" | null;
+  is_estimated: boolean;
+  historical_period: string | null;
   provenance: string;
   category: ArtifactCategory;
   images: string[];
@@ -54,6 +58,7 @@ export interface Artifact {
   created_at: string;
   updated_at: string;
 }
+
 
 // ─── Auction ───
 

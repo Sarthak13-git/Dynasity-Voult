@@ -3,6 +3,8 @@ import Link from "next/link";
 import { ShieldCheck, Download, AlertTriangle, FileText, ArrowLeft, CheckCircle2 } from "lucide-react";
 import Image from "next/image";
 import { getBaseUrl } from "@/lib/get-base-url";
+import { formatHistoricalDate } from "@/lib/format-historical-date";
+
 
 export const dynamic = "force-dynamic";
 
@@ -201,8 +203,15 @@ export default async function VerifyCertificatePage({ params }: Props) {
                   <div className="min-w-0 flex-1 space-y-1">
                     <span className="font-bold text-gray-900 text-sm block truncate">{artifact?.title}</span>
                     <p className="text-[10px] text-gray-500 uppercase tracking-wide">Category: {artifact?.category}</p>
+                    <p className="text-[10px] text-gray-500">
+                      Estimated Creation: {formatHistoricalDate(artifact?.creation_year, artifact?.calendar_era, artifact?.is_estimated)}
+                    </p>
+                    {artifact?.historical_period && (
+                      <p className="text-[10px] text-gray-500">Period: {artifact.historical_period}</p>
+                    )}
                     <p className="text-[10px] text-gray-500 truncate">Seller: {sellerName}</p>
                   </div>
+
                 </div>
               </div>
             </div>

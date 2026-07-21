@@ -38,12 +38,17 @@ export async function GET(request: Request) {
           title,
           thumbnail_url,
           seller_id,
+          creation_year,
+          calendar_era,
+          is_estimated,
+          historical_period,
           seller:profiles!seller_id (
             display_name,
             store_name,
             email
           )
         )
+
       `)
       .order("created_at", { ascending: false });
 
