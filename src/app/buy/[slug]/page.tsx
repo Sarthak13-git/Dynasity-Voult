@@ -78,7 +78,9 @@ export default async function ProductDetailPage({ params }: PageProps) {
     .eq("status", "available")
     .not("seller_id", "is", null)
     .neq("id", artifact.id)
+    .neq("title", artifact.title)
     .limit(4);
+
 
   // Filter out any related item with auction links
   const relatedItems = (relatedRaw || [])
