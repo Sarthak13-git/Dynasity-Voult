@@ -20,8 +20,9 @@ export async function addArtifact(artifactData: ArtifactData) {
         era: artifactData.era || "",
         year_estimate: artifactData.year_estimate || null,
         creation_year: artifactData.creation_year || null,
-        calendar_era: artifactData.calendar_era || "CE",
+        calendar_era: artifactData.calendar_era === "BC" ? "BCE" : (artifactData.calendar_era === "AD" ? "CE" : (artifactData.calendar_era || "CE")),
         is_estimated: artifactData.is_estimated !== false,
+
         historical_period: artifactData.historical_period || null,
         provenance: artifactData.provenance || "",
         category: artifactData.category,
@@ -57,8 +58,9 @@ export async function addArtifactsBulk(artifactsData: ArtifactData[]) {
     era: artifact.era || "",
     year_estimate: artifact.year_estimate || null,
     creation_year: artifact.creation_year || null,
-    calendar_era: artifact.calendar_era || "CE",
+    calendar_era: artifact.calendar_era === "BC" ? "BCE" : (artifact.calendar_era === "AD" ? "CE" : (artifact.calendar_era || "CE")),
     is_estimated: artifact.is_estimated !== false,
+
     historical_period: artifact.historical_period || null,
     provenance: artifact.provenance || "",
     category: artifact.category,

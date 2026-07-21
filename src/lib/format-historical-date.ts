@@ -14,7 +14,10 @@ export function formatHistoricalDate(
     return "Unknown";
   }
 
-  const era = calendarEra || "CE";
+  let era = calendarEra || "CE";
+  if (era === "BC") era = "BCE";
+  if (era === "AD") era = "CE";
   const prefix = isEstimated !== false ? "c. " : "";
   return `${prefix}${creationYear} ${era}`;
 }
+

@@ -117,8 +117,9 @@ export async function POST(request: Request) {
         era: era || "",
         year_estimate: year_estimate || null,
         creation_year: parsedYear,
-        calendar_era: calendar_era || "CE",
+        calendar_era: calendar_era === "BC" ? "BCE" : (calendar_era === "AD" ? "CE" : (calendar_era || "CE")),
         is_estimated: is_estimated !== false,
+
         historical_period: historical_period || null,
         provenance: provenance || "",
         slug,
@@ -389,8 +390,9 @@ export async function PATCH(request: Request) {
         era: era || "",
         year_estimate: year_estimate || null,
         creation_year: parsedYear,
-        calendar_era: calendar_era || "CE",
+        calendar_era: calendar_era === "BC" ? "BCE" : (calendar_era === "AD" ? "CE" : (calendar_era || "CE")),
         is_estimated: is_estimated !== false,
+
         historical_period: historical_period || null,
         provenance: provenance || "",
         estimated_value: parseFloat(estimated_value),
